@@ -1,0 +1,68 @@
+name: Release
+
+# دو راه برای ساخت نسخهٔ جدید:
+# 1) تب Actions > Release > Run workflow و نوشتن شمارهٔ نسخه (مثلاً 0.1.1)
+# 2) ساختن tag به شکل v0.1.1
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "شمارهٔ نسخه، مثلاً 0.1.1 (باید از نسخهٔ قبلی بزرگ‌تر باشد)"
+        required: true
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set version and update endpoint
+        id: ver
+        shell: bash
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          VERSION="${VERSION#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          VERSION="$VERSION" REPO="${{ github.repository }}" node -e '
+            const fs = require("fs");
+            const p = "src-tauri/tauri.conf.json";
+            const c = JSON.parse(fs.readFileSync(p, "utf8"));
+            c.version = process.env.VERSION;
+            c.plugins.updater.endpoints = ["https://github.com/" + process.env.REPO + "/releases/latest/download/latest.json"];
+            fs.writeFileSync(p, JSON.stringify(c, null, 2));
+            console.log("version", c.version, "endpoint", c.plugins.updater.endpoints[0]);
+          '
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "src-tauri -> target"
+
+      - run: npm install
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+        with:
+          tagName: v${{ steps.ver.outputs.version }}
+          releaseName: "موزیک پلیر v${{ steps.ver.outputs.version }}"
+          releaseBody: "نسخهٔ ${{ steps.ver.outputs.version }}. فایل setup.exe را برای نصب دانلود کنید؛ نسخه‌های نصب‌شده خودشان آپدیت را پیشنهاد می‌دهند."
+          releaseDraft: false
+          prerelease: false
