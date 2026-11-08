@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "dev": "tauri dev --config src-tauri/tauri.dev.conf.json",
     "start": "tauri",
     "build": "tauri",
     "tauri": "tauri"
