@@ -45,7 +45,7 @@ svg.i.fill{fill:currentColor}
 .nav-head{display:flex;align-items:center;justify-content:space-between;margin:14px 8px 4px;color:var(--muted);font-size:12px}
 .nav-head button{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;background:var(--panel2)}
 .nav-head button:hover{background:var(--accent)}
-#btnTheme{margin-top:auto}
+#btnBackup{margin-top:auto}
 .side-foot{padding:10px 8px 0;color:var(--muted);font-size:12px;line-height:1.8}
 
 /* ---- main ---- */
@@ -66,10 +66,19 @@ select.sel{background:var(--panel2);border:1px solid var(--line);border-radius:1
 
 .list{flex:1;overflow:auto;padding:0 12px 16px}
 .row,.thead{display:grid;grid-template-columns:40px 48px minmax(0,2fr) minmax(0,1.2fr) 60px 112px;gap:12px;align-items:center;padding:6px 10px;border-radius:10px}
+.row{height:56px}
+#rows{position:relative}
 .thead{position:sticky;top:0;background:var(--bg);color:var(--muted);font-size:12px;z-index:2;border-bottom:1px solid var(--line);border-radius:0;padding:8px 10px}
 .row{cursor:pointer}
 .row:hover{background:var(--panel2)}
 .row.cur{background:var(--accent-soft)}
+.row.dragging{opacity:.35}
+.row.drop-before{box-shadow:inset 0 3px 0 var(--accent)}
+.row.drop-after{box-shadow:inset 0 -3px 0 var(--accent)}
+.favmark{color:var(--accent2);margin-inline-start:6px}
+.favmark svg.i{width:12px;height:12px}
+.c-act button.on{color:var(--accent2)}
+.row.srt{cursor:grab}
 .row.cur .t{color:var(--accent2)}
 .c-idx{text-align:center;color:var(--muted)}
 .c-idx .eq{display:none}
@@ -81,6 +90,10 @@ select.sel{background:var(--panel2);border:1px solid var(--line);border-radius:1
 .cover.big svg.i{width:48px;height:48px}
 .c-main{min-width:0}
 .c-main .t{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ib.fav{width:30px;height:30px}
+.ib.fav.on{color:var(--accent2)}
+.ib.fav.on svg.i{fill:currentColor}
+.c-act button.on svg.i{fill:currentColor}
 .c-main .t,.c-main .a,.c-album{text-align:right}
 .c-main .a,.c-album{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
 .c-dur{color:var(--muted);font-size:13px;direction:ltr;text-align:center}
@@ -98,7 +111,7 @@ select.sel{background:var(--panel2);border:1px solid var(--line);border-radius:1
 .drop-overlay.on{display:grid}
 
 /* ---- player ---- */
-#player{grid-column:1/-1;background:var(--panel);border-top:1px solid var(--line);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr) minmax(0,1fr);gap:18px;align-items:center;padding:10px 18px;position:relative}
+#player{grid-column:1/-1;background:var(--panel);border-top:1px solid var(--line);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) minmax(0,1.5fr);gap:14px;align-items:center;padding:10px 18px;position:relative}
 .np{display:flex;align-items:center;gap:12px;min-width:0}
 .np .meta{min-width:0}
 .np #npTitle{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -115,8 +128,9 @@ select.sel{background:var(--panel2);border:1px solid var(--line);border-radius:1
 .seek span{width:44px;text-align:center;font-variant-numeric:tabular-nums}
 input[type=range]{accent-color:var(--accent);cursor:pointer}
 #seek{flex:1;min-width:0}
-.right{display:flex;gap:10px;align-items:center;justify-content:flex-end;direction:ltr}
-.right input[type=range]{width:100px}
+.right{display:flex;gap:4px;align-items:center;justify-content:flex-end;direction:ltr;flex-wrap:wrap}
+.right .fxbtn{flex:none;margin-inline-end:6px}
+.right input[type=range]{width:84px}
 .fxbtn{display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:10px;background:var(--panel2);border:1px solid var(--line);direction:rtl;font-size:13px;white-space:nowrap}
 .fxbtn:hover{border-color:var(--accent2)}
 .fxbtn.on{border-color:var(--accent);color:var(--accent2)}
@@ -133,6 +147,32 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
 .linkrow{display:flex;gap:10px;align-items:flex-start;padding:10px;border-radius:10px;background:var(--panel2);cursor:pointer;line-height:1.7}
 .linkrow input{margin-top:5px}
 .hint{color:var(--muted);font-size:12px;line-height:1.8;margin-top:10px}
+
+/* ---- popups: eq, sleep ---- */
+.pop{position:absolute;bottom:calc(100% + 8px);left:16px;width:360px;max-width:calc(100vw - 32px);background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 18px 50px rgba(0,0,0,.55);z-index:30;direction:rtl}
+.pop h4{margin:0 0 12px;font-size:15px;display:flex;justify-content:space-between;align-items:center}
+.eqbands{display:flex;justify-content:space-between;direction:ltr;margin:6px 0 12px}
+.eqb{display:flex;flex-direction:column;align-items:center;gap:6px;width:20%}
+.eqb input[type=range]{writing-mode:vertical-lr;direction:rtl;width:26px;height:130px;margin:0}
+.eqb .g{font-size:11px;color:var(--accent2);font-variant-numeric:tabular-nums;direction:ltr}
+.eqb .f{font-size:11px;color:var(--muted);direction:ltr}
+.ib .tbadge{position:absolute;top:-3px;inset-inline-start:-4px;font-size:9px;font-weight:700;background:var(--accent);color:var(--on-accent);border-radius:8px;padding:0 4px;line-height:14px;direction:ltr}
+.ib.sm{width:34px;height:34px}
+#ctx{position:fixed;z-index:60;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px;min-width:200px;box-shadow:0 14px 40px rgba(0,0,0,.5)}
+#ctx button{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border-radius:8px;text-align:right}
+#ctx button:hover{background:var(--panel2)}
+#ctx button.danger{color:var(--danger)}
+#ctx .sep{height:1px;background:var(--line);margin:4px 0}
+.qrow{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:10px}
+.qrow:hover{background:var(--panel2)}
+.qrow .qt{flex:1;min-width:0}
+.qrow .qt div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qrow .qt .a{color:var(--muted);font-size:12px}
+.qrow .qb{display:flex;gap:2px}
+.qrow .qb button{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;color:var(--muted)}
+.qrow .qb button:hover{background:var(--line);color:var(--text)}
+.qh{color:var(--muted);font-size:12px;margin:12px 0 4px}
+.bk-info{padding:10px;border-radius:10px;background:var(--panel2);line-height:1.9;margin-bottom:6px}
 
 /* ---- folder / theme ---- */
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -181,6 +221,7 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
 #toast{position:fixed;bottom:104px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--panel2);border:1px solid var(--line);max-width:min(92vw,720px);line-height:1.7;padding:10px 18px;border-radius:12px;opacity:0;pointer-events:none;transition:.2s;z-index:200}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
+@media (max-width:1100px){ .fxbtn:not(.on) #fxLabel{display:none} }
 @media (max-width:860px){
   #app{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr) auto}
   #side{flex-direction:row;align-items:center;overflow-x:auto;border-left:0;border-bottom:1px solid var(--line);padding:8px}
@@ -192,7 +233,7 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
   .c-act{opacity:1}
   #player{grid-template-columns:1fr;gap:8px}
   .right{justify-content:space-between}
-  #fx{left:8px}
+  #fx,.pop{left:8px}
 }
 </style>
 </head>
@@ -202,9 +243,12 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
     <div class="brand"><span class="logo" data-icon="music"></span> موزیک پلیر من</div>
     <nav>
       <button class="nav-item" data-view="all"><span data-icon="music"></span><span class="nm">همه آهنگ‌ها</span><span class="count" id="cAll">0</span></button>
+      <button class="nav-item" data-view="fav"><span data-icon="heart"></span><span class="nm">علاقه‌مندی‌ها</span><span class="count" id="cFav">0</span></button>
+      <button class="nav-item" data-view="recent"><span data-icon="clock"></span><span class="nm">اخیراً پخش‌شده</span></button>
       <div class="nav-head"><span>پلی‌لیست‌ها</span><button id="btnNewPl" title="پلی‌لیست جدید" data-icon="plus"></button></div>
       <div id="plList"></div>
     </nav>
+    <button class="nav-item hidden" id="btnBackup"><span data-icon="shield"></span><span class="nm">پشتیبان‌گیری</span></button>
     <button class="nav-item" id="btnTheme"><span data-icon="palette"></span><span class="nm">ظاهر و رنگ‌ها</span></button>
     <div class="side-foot" id="storageInfo"></div>
     <div class="app-info hidden" id="appInfo"><span>نسخه <b id="appVer" dir="ltr">—</b></span><button class="btn sm" id="btnChkUpd">بررسی آپدیت</button></div>
@@ -224,6 +268,7 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
           <option value="title">نام آهنگ</option>
           <option value="artist">خواننده</option>
           <option value="album">آلبوم</option>
+          <option value="plays">بیشترین پخش</option>
         </select>
         <span id="plActions" class="top-actions"></span>
         <button class="btn" id="btnPlayAll"><span data-icon="play" class="fillicon"></span> پخش همه</button>
@@ -241,6 +286,7 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
     <div class="np">
       <div id="npCover"></div>
       <div class="meta"><div id="npTitle" dir="auto"></div><div id="npArtist" dir="auto"></div></div>
+      <button class="ib fav" id="npFav" title="علاقه‌مندی" data-icon="heart"></button>
     </div>
     <div class="center">
       <div class="ctrls">
@@ -254,10 +300,29 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
     </div>
     <div class="right">
       <button class="fxbtn" id="btnFx"><span data-icon="sliders"></span><span id="fxLabel">سرعت و پیچ</span></button>
-      <button class="ib" id="btnMute" title="بی‌صدا"></button>
+      <button class="ib sm" id="btnEq" title="اکولایزر" data-icon="eq"></button>
+      <button class="ib sm" id="btnSleep" title="تایمر خواب"><span data-icon="moon"></span><span class="tbadge hidden" id="sleepBadge"></span></button>
+      <button class="ib sm" id="btnQueue" title="صف پخش"><span data-icon="queue"></span><span class="tbadge hidden" id="qBadge"></span></button>
+      <button class="ib sm" id="btnMute" title="بی‌صدا"></button>
       <input type="range" id="vol" min="0" max="1" step="0.01" value="0.8">
     </div>
 
+    <div id="eqPop" class="pop hidden">
+      <h4><span>اکولایزر</span><button class="ib" id="eqClose" data-icon="x" style="width:30px;height:30px"></button></h4>
+      <div class="eqbands" id="eqBands"></div>
+      <div class="chips" id="eqPresets"></div>
+      <div class="hint">با تغییر هر باند اکولایزر خودکار روشن می‌شود. وقتی همهٔ باندها صفر باشند خاموش است و پردازشی انجام نمی‌شود.</div>
+    </div>
+    <div id="sleepPop" class="pop hidden">
+      <h4><span>تایمر خواب</span><button class="ib" id="sleepClose" data-icon="x" style="width:30px;height:30px"></button></h4>
+      <div class="hint" style="margin:0 0 10px" id="sleepStatus"></div>
+      <div class="chips" id="sleepChips">
+        <button class="chip" data-min="15">۱۵ دقیقه</button><button class="chip" data-min="30">۳۰ دقیقه</button><button class="chip" data-min="45">۴۵ دقیقه</button>
+        <button class="chip" data-min="60">۱ ساعت</button><button class="chip" data-min="90">۱.۵ ساعت</button><button class="chip" data-min="eot">پایان آهنگ فعلی</button>
+      </div>
+      <div style="margin-top:12px"><button class="btn sm hidden" id="sleepCancel">لغو تایمر</button></div>
+      <div class="hint">چند ثانیهٔ آخر صدا آرام کم می‌شود و بعد پخش متوقف می‌شود.</div>
+    </div>
     <div id="fx" class="hidden">
       <h4><span>سرعت و پیچ</span><button class="ib" id="fxClose" data-icon="x" style="width:30px;height:30px"></button></h4>
       <div class="fxrow">
@@ -306,14 +371,15 @@ const TAURI = window.__TAURI__;
 const IS_APP = !!(TAURI && TAURI.updater);
 const FS = (TAURI && TAURI.fs && TAURI.path && TAURI.core) ? TAURI.fs : null;
 const AUDIO_RE = /\.(mp3|m4a|flac|wav|ogg|oga|opus|aac|webm|wma)$/i;
-let FOLDER = false, MUSIC_DIR = '', SEP = '\\';
+let FOLDER = false, MUSIC_DIR = '', DATA_DIR = '', SEP = '\\';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const fullPath = rel => MUSIC_DIR + SEP + rel.split('/').join(SEP);
+const dataPath = (...p) => DATA_DIR + SEP + p.join(SEP);
 const fileUrl = rel => TAURI.core.convertFileSrc(fullPath(rel));
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const store = {
   get(k, d){ try{ const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); }catch(e){ return d; } },
-  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} if(k !== 'mp_resume') scheduleBackup(); }
 };
 const ICONS = {
   play:'<polygon points="6 4 20 12 6 20 6 4"/>',
@@ -322,6 +388,16 @@ const ICONS = {
   next:'<polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/>',
   shuffle:'<polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/>',
   repeat:'<polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
+  heart:'<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>',
+  clock:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+  more:'<circle cx="12" cy="5" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="12" cy="19" r="1.3"/>',
+  moon:'<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
+  queue:'<line x1="3" y1="6" x2="15" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="11" y2="18"/><line x1="18" y1="14" x2="18" y2="22"/><line x1="14" y1="18" x2="22" y2="18"/>',
+  eq:'<line x1="5" y1="20" x2="5" y2="12"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="19" y1="20" x2="19" y2="9"/>',
+  up:'<polyline points="18 15 12 9 6 15"/>',
+  down:'<polyline points="6 9 12 15 18 9"/>',
+  shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+  next1:'<polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/>',
   vol:'<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>',
   mute:'<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>',
   edit:'<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>',
@@ -373,7 +449,7 @@ function dbPut(store, val, key){
     const os = t.objectStore(store);
     const r = key === undefined ? os.put(val) : os.put(val, key);
     let id; r.onsuccess = () => { id = r.result; };
-    t.oncomplete = () => res(id);
+    t.oncomplete = () => { scheduleBackup(); res(id); };
     t.onerror = t.onabort = () => rej(t.error || new Error('abort'));
   });
 }
@@ -382,7 +458,7 @@ function dbDel(stores, key){
   return new Promise((res, rej) => {
     const t = db.transaction(stores, 'readwrite');
     stores.forEach(s => t.objectStore(s).delete(key));
-    t.oncomplete = () => res();
+    t.oncomplete = () => { scheduleBackup(); res(); };
     t.onerror = t.onabort = () => rej(t.error || new Error('abort'));
   });
 }
@@ -396,18 +472,188 @@ function dbAddTrack(meta, audioBlob, coverBlob){
       if(audioBlob) t.objectStore('audio').put(audioBlob, id);
       if(coverBlob) t.objectStore('covers').put(coverBlob, id);
     };
-    t.oncomplete = () => res(id);
+    t.oncomplete = () => { scheduleBackup(); res(id); };
     t.onerror = t.onabort = () => rej(t.error || new Error('abort'));
   });
+}
+
+/* ================= اکولایزر: تنظیمات پایه ================= */
+const EQ_FREQ = [60, 230, 910, 3600, 14000];
+const EQ_PRESETS = [
+  ['صاف', [0, 0, 0, 0, 0]], ['بیس قوی', [7, 5, 1, 0, 0]], ['صدای زیر', [0, 0, 0, 4, 6]],
+  ['وکال', [-2, -1, 3, 4, 1]], ['راک', [5, 3, -2, 3, 5]], ['پاپ', [-1, 2, 4, 2, -1]]
+];
+function loadEq(){
+  const v = store.get('mp_eq', null);
+  const g = (v && Array.isArray(v.g) ? v.g : []).slice(0, 5).map(x => Math.max(-12, Math.min(12, Number(x) || 0)));
+  while(g.length < 5) g.push(0);
+  return {g};
+}
+const eqActive = () => S.eq.g.some(x => Math.abs(x) > 0.05);
+
+/* ================= پشتیبان (library.json) =================
+   نام‌ها، خواننده‌ها، آلبوم‌ها، عکس‌ها، پلی‌لیست‌ها، علاقه‌مندی‌ها و تنظیمات کنار پوشهٔ آهنگ‌ها ذخیره می‌شوند
+   تا اگر داده‌های برنامه پاک شد، خودکار برگردند. کلید هر آهنگ مسیر فایل آن است. */
+const BK = {hold:false, ready:false, timer:null, dirty:false, saving:false, covers:new Set(), dirtyCovers:new Set(), clean:false, first:true, last:0, failed:false};
+const BK_KEYS = ['mp_theme', 'mp_fx', 'mp_sort', 'mp_vol', 'mp_shuffle', 'mp_repeat', 'mp_eq'];
+function hash32(s, seed){ let h = seed >>> 0; for(let i = 0; i < s.length; i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h.toString(16).padStart(8, '0'); }
+const coverName = rel => hash32(rel, 2166136261) + hash32(rel, 0x9e3779b1) + '.jpg';
+const libPath = () => dataPath('library.json');
+function scheduleBackup(){
+  if(!FOLDER) return;
+  BK.dirty = true;
+  if(!BK.ready) return;
+  clearTimeout(BK.timer); BK.timer = setTimeout(saveBackup, 2000);
+}
+async function saveBackup(){
+  if(!FOLDER || !BK.ready) return false;
+  if(BK.hold){ if(!S.tracks.size) return false; BK.hold = false; }   // پشتیبان موجود را با وضعیت خالی بازنویسی نکن
+  if(BK.saving){ BK.dirty = true; return false; }
+  BK.saving = true; BK.dirty = false;
+  try{
+    const lib = {v:1, saved:Date.now(), tracks:[], playlists:[], settings:{}};
+    const tracks = [...S.tracks.values()].filter(t => t.file);
+    const byId = new Map(tracks.map(t => [t.id, t]));
+    for(const t of tracks){
+      const o = {file:t.file, title:t.title, artist:t.artist, album:t.album, duration:t.duration, added:t.added};
+      if(t.fav) o.fav = 1;
+      if(t.plays) o.plays = t.plays;
+      if(t.lastPlayed) o.lastPlayed = t.lastPlayed;
+      if(t.hasCover) o.cover = coverName(t.file);
+      lib.tracks.push(o);
+    }
+    for(const p of S.playlists) lib.playlists.push({name:p.name, created:p.created, files:p.trackIds.map(i => byId.get(i)).filter(Boolean).map(t => t.file)});
+    for(const k of BK_KEYS){ const v = store.get(k, undefined); if(v !== undefined) lib.settings[k] = v; }
+    await FS.mkdir(dataPath('covers'), {recursive:true});
+    const keep = new Set();
+    for(const t of tracks){
+      const n = coverName(t.file);
+      if(!t.hasCover){
+        if(BK.dirtyCovers.has(t.id)){ try{ if(await FS.exists(dataPath('covers', n))) await FS.remove(dataPath('covers', n)); }catch(e){} BK.covers.delete(n); }
+        continue;
+      }
+      keep.add(n);
+      const cp = dataPath('covers', n);
+      const force = BK.dirtyCovers.has(t.id);
+      if(!force && BK.covers.has(n)) continue;
+      if(!force && await FS.exists(cp)){ BK.covers.add(n); continue; }
+      const blob = await dbGet('covers', t.id);
+      if(blob){ await FS.writeFile(cp, new Uint8Array(await blob.arrayBuffer())); BK.covers.add(n); }
+    }
+    BK.dirtyCovers.clear();
+    if(BK.clean){
+      BK.clean = false;
+      try{ for(const e of await FS.readDir(dataPath('covers'))){ if(e.isFile && !keep.has(e.name)){ await FS.remove(dataPath('covers', e.name)); BK.covers.delete(e.name); } } }catch(e){}
+    }
+    // اولین ذخیره در هر اجرا: نسخهٔ قبلی را نگه دار تا اگر وضعیت خالی/خراب بود چیزی گم نشود
+    if(BK.first){
+      BK.first = false;
+      try{ if(await FS.exists(libPath())) await FS.copyFile(libPath(), dataPath('library.prev.json')); }catch(e){}
+    }
+    const tmp = libPath() + '.tmp';
+    await FS.writeTextFile(tmp, JSON.stringify(lib));
+    await FS.rename(tmp, libPath());
+    BK.last = lib.saved; BK.failed = false;
+    return true;
+  }catch(e){
+    console.warn('backup failed', e);
+    if(!BK.failed) toast('ذخیرهٔ پشتیبان انجام نشد: ' + ((e && e.message) || e), false, 5000);
+    BK.failed = true; BK.dirty = true;
+    clearTimeout(BK.timer); BK.timer = setTimeout(saveBackup, 30000);
+    return false;
+  }finally{
+    BK.saving = false;
+    if(BK.dirty && !BK.failed) scheduleBackup();
+  }
+}
+async function loadLibraryFile(){
+  try{
+    if(!await FS.exists(libPath())) return null;
+    const lib = JSON.parse(await FS.readTextFile(libPath()));
+    if(!lib || !Array.isArray(lib.tracks)) return {error:true};
+    return lib;
+  }catch(e){ console.warn('library.json unreadable', e); return {error:true}; }
+}
+// فایل‌های پوشه باید قبلاً وارد کتابخانه شده باشند؛ اطلاعات پشتیبان روی آن‌ها اعمال می‌شود
+async function applyLibrary(lib, opt){
+  opt = opt || {};
+  const byFile = new Map([...S.tracks.values()].filter(t => t.file).map(t => [t.file, t]));
+  let n = 0;
+  for(const b of lib.tracks || []){
+    const t = byFile.get(b.file); if(!t) continue;
+    if(typeof b.title === 'string' && b.title) t.title = b.title;
+    if(typeof b.artist === 'string') t.artist = b.artist;
+    if(typeof b.album === 'string') t.album = b.album;
+    if(b.added > 0) t.added = b.added;
+    t.fav = !!b.fav; t.plays = b.plays > 0 ? b.plays : 0; t.lastPlayed = b.lastPlayed > 0 ? b.lastPlayed : 0;
+    if(b.cover && /^[0-9a-f]{16}\.jpg$/.test(b.cover)){
+      try{
+        const bytes = await FS.readFile(dataPath('covers', b.cover));
+        await dbPut('covers', new Blob([bytes], {type:'image/jpeg'}), t.id);
+        dropCoverUrl(t.id); t.hasCover = true; BK.dirtyCovers.add(t.id);
+      }catch(e){ console.warn('cover restore failed', b.cover, e); }
+    }
+    await dbPut('tracks', t); n++;
+  }
+  if(opt.replacePlaylists){
+    for(const p of S.playlists) await dbDel('playlists', p.id);
+    S.playlists = [];
+  }
+  let pl = 0;
+  for(const q of lib.playlists || []){
+    if(!q || !q.name) continue;
+    if(!opt.replacePlaylists && S.playlists.some(p => p.name === q.name)) continue;
+    const p = await createPlaylist(String(q.name));
+    if(q.created > 0) p.created = q.created;
+    p.trackIds = (q.files || []).map(f => (byFile.get(f) || {}).id).filter(x => x != null);
+    await dbPut('playlists', p); pl++;
+  }
+  if(opt.settings && lib.settings){
+    for(const k of BK_KEYS) if(k in lib.settings) store.set(k, lib.settings[k]);
+    reloadSettings();
+  }
+  return {tracks:n, playlists:pl};
+}
+function openBackup(){
+  openModal('<h3>پشتیبان‌گیری از کتابخانه</h3>' +
+    '<div class="hint" style="margin:0 0 10px">نام، خواننده، آلبوم، عکس، پلی‌لیست‌ها، علاقه‌مندی‌ها و تنظیمات خودکار در فایل <span dir="ltr">library.json</span> کنار پوشهٔ آهنگ‌ها ذخیره می‌شوند. اگر داده‌های برنامه پاک شود، با باز شدن برنامه خودکار برمی‌گردند.</div>' +
+    '<div class="bk-info" id="bkInfo">…</div><span class="path" id="bkPath"></span>' +
+    '<div class="actions" style="flex-wrap:wrap"><button class="btn primary" id="bkSave">ذخیرهٔ پشتیبان همین حالا</button><button class="btn" id="bkRestore">بازیابی از پشتیبان</button><button class="btn" id="bkOpen">باز کردن پوشه</button><button class="btn" data-close>بستن</button></div>',
+    m => {
+      const q = s => m.querySelector(s);
+      q('#bkPath').textContent = DATA_DIR;
+      const info = async () => {
+        try{
+          const st = await FS.stat(libPath());
+          q('#bkInfo').innerHTML = 'آخرین پشتیبان: <b>' + esc(new Date(st.mtime).toLocaleString('fa-IR')) + '</b><br>حجم: ' + Math.max(1, Math.round(st.size / 1024)) + ' کیلوبایت · ' + S.tracks.size + ' آهنگ · ' + S.playlists.length + ' پلی‌لیست';
+        }catch(e){ q('#bkInfo').textContent = 'هنوز پشتیبانی ذخیره نشده است.'; }
+      };
+      info();
+      q('#bkSave').onclick = async () => { clearTimeout(BK.timer); const ok = await saveBackup(); toast(ok ? 'پشتیبان ذخیره شد' : 'ذخیره نشد'); info(); };
+      q('#bkOpen').onclick = async () => { try{ await TAURI.opener.openPath(DATA_DIR); }catch(e){ toast('باز کردن پوشه ممکن نشد. مسیر: ' + DATA_DIR, false, 8000); } };
+      q('#bkRestore').onclick = async () => {
+        const lib = await loadLibraryFile();
+        if(!lib){ toast('فایل پشتیبانی پیدا نشد'); return; }
+        if(lib.error){ toast('فایل پشتیبان خراب است'); return; }
+        if(!await askConfirm('نام‌ها، پلی‌لیست‌ها، علاقه‌مندی‌ها و تنظیمات فعلی با پشتیبان جایگزین شوند؟', 'بازیابی')) return;
+        try{
+          const r = await applyLibrary(lib, {replacePlaylists:true, settings:true});
+          renderAll(); updateNowPlaying();
+          toast('بازیابی شد: ' + r.tracks + ' آهنگ و ' + r.playlists + ' پلی‌لیست');
+          info();
+        }catch(e){ console.error(e); toast('بازیابی ناموفق بود'); }
+      };
+    });
 }
 
 /* ================= state ================= */
 const S = {
   tracks: new Map(), playlists: [], covers: new Map(),
   view: 'all', q: '', sort: 'new',
-  queue: [], qi: -1, curId: null, playing: false, hist: [],
+  queue: [], qi: -1, curId: null, playing: false, hist: [], upNext: [], counted: false,
   shuffle: store.get('mp_shuffle', false), repeat: store.get('mp_repeat', 0), // 0 off, 1 all, 2 one
-  fx: Object.assign({speed:1, pitch:0, link:false}, store.get('mp_fx', {}))
+  fx: Object.assign({speed:1, pitch:0, link:false}, store.get('mp_fx', {})),
+  eq: loadEq()
 };
 
 /* ================= ID3 tags ================= */
@@ -500,7 +746,7 @@ function getDuration(src){
   });
 }
 async function resizeCover(blob, max){
-  max = max || 500;
+  max = max || 320;
   const url = URL.createObjectURL(blob);
   try{
     const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
@@ -553,118 +799,211 @@ class Jungle{
   }
 }
 
-/* ================= audio engine ================= */
+/* ================= audio engine =================
+   AudioContext فقط وقتی ساخته می‌شود که واقعاً لازم باشد (پیچ ≠ ۰ یا اکولایزر روشن).
+   بدون آن، صدا مستقیم و بدون پردازش پخش می‌شود و مصرف پردازنده کمترین است. */
 const audio = new Audio();
 audio.preload = 'auto';
-let ctx = null, dryG, wetG, jungle, curUrl = null;
+let ctx = null, G = null, curUrl = null, idleT = null;
+const needGraph = () => Math.abs(S.fx.pitch) >= 0.01 || eqActive();
+const gestured = () => !navigator.userActivation || navigator.userActivation.hasBeenActive;
 
 function ensureGraph(){
-  if(ctx){ if(ctx.state === 'suspended') ctx.resume(); return; }
-  try{
-    const AC = window.AudioContext || window.webkitAudioContext;
-    const c = new AC();
-    const srcNode = c.createMediaElementSource(audio);
-    dryG = c.createGain(); wetG = c.createGain();
-    jungle = new Jungle(c);
-    srcNode.connect(dryG); dryG.connect(c.destination);
-    srcNode.connect(jungle.input); jungle.output.connect(wetG); wetG.connect(c.destination);
-    ctx = c;
-    if(c.state === 'suspended') c.resume();
-  }catch(e){ console.error(e); ctx = null; }
+  if(!ctx){
+    if(!needGraph() || !gestured()) return;
+    try{
+      const AC = window.AudioContext || window.webkitAudioContext;
+      const c = new AC();
+      const src = c.createMediaElementSource(audio);
+      const pre = c.createGain();
+      const filters = EQ_FREQ.map((f, i) => {
+        const b = c.createBiquadFilter();
+        b.type = i === 0 ? 'lowshelf' : (i === EQ_FREQ.length - 1 ? 'highshelf' : 'peaking');
+        b.frequency.value = f; b.Q.value = 1;
+        return b;
+      });
+      pre.connect(filters[0]);
+      for(let i = 0; i < filters.length - 1; i++) filters[i].connect(filters[i + 1]);
+      G = {c, src, pre, filters, last: filters[filters.length - 1], jungle: null, sig: ''};
+      ctx = c;
+    }catch(e){ console.error(e); ctx = null; G = null; return; }
+    rewire(true);
+  }
+  clearTimeout(idleT);
+  if(ctx.state === 'suspended') ctx.resume().catch(() => {});
+}
+// مسیر صدا: منبع ← (اکولایزر) ← (پیچ‌شیفتر) ← خروجی. بخش‌های خاموش اصلاً به مسیر وصل نمی‌شوند.
+function rewire(full){
+  if(!G) return;
+  const pOn = Math.abs(S.fx.pitch) >= 0.01, eOn = eqActive();
+  const sig = (pOn ? 'p' : '-') + (eOn ? 'e' : '-');
+  const mx = Math.max(0, ...S.eq.g);
+  G.pre.gain.value = Math.pow(10, -mx / 20);          // جلوگیری از اعوجاج وقتی باندها بالا می‌روند
+  G.filters.forEach((f, i) => { f.gain.value = S.eq.g[i]; });
+  if(!full && sig === G.sig){ if(pOn && G.jungle) G.jungle.setRatio(Math.pow(2, S.fx.pitch / 12)); return; }
+  G.sig = sig;
+  for(const n of [G.src, G.last]){ try{ n.disconnect(); }catch(e){} }
+  if(G.jungle){ try{ G.jungle.output.disconnect(); }catch(e){} }
+  let head = G.src;
+  if(eOn){ G.src.connect(G.pre); head = G.last; }
+  if(pOn){
+    if(!G.jungle) G.jungle = new Jungle(G.c);
+    head.connect(G.jungle.input); G.jungle.output.connect(G.c.destination);
+    G.jungle.setRatio(Math.pow(2, S.fx.pitch / 12));
+  } else head.connect(G.c.destination);
 }
 function applyFx(){
   const keep = !S.fx.link;
   audio.preservesPitch = keep; audio.mozPreservesPitch = keep; audio.webkitPreservesPitch = keep;
   audio.defaultPlaybackRate = S.fx.speed;
   audio.playbackRate = S.fx.speed;
-  if(!ctx) return;
-  if(Math.abs(S.fx.pitch) < 0.01){ dryG.gain.value = 1; wetG.gain.value = 0; jungle.setRatio(1); }
-  else { dryG.gain.value = 0; wetG.gain.value = 1; jungle.setRatio(Math.pow(2, S.fx.pitch / 12)); }
+  if(!ctx && needGraph()) ensureGraph();
+  if(ctx) rewire(false);
 }
 
 /* ================= views ================= */
 const col = new Intl.Collator('fa', {numeric:true, sensitivity:'base'});
 const getPl = id => S.playlists.find(p => p.id === id);
 
+const isPlView = () => typeof S.view === 'number';
 function viewIds(){
+  const v = S.view, g = id => S.tracks.get(id);
   let ids;
-  if(S.view === 'all') ids = [...S.tracks.keys()];
-  else { const p = getPl(S.view); ids = p ? p.trackIds.filter(id => S.tracks.has(id)) : []; }
+  if(typeof v === 'string') ids = [...S.tracks.keys()];
+  else { const p = getPl(v); ids = p ? p.trackIds.filter(id => S.tracks.has(id)) : []; }
+  if(v === 'fav') ids = ids.filter(id => g(id).fav);
+  else if(v === 'recent') ids = ids.filter(id => g(id).lastPlayed);
   const q = S.q.trim().toLowerCase();
-  if(q) ids = ids.filter(id => { const t = S.tracks.get(id); return (t.title + ' ' + t.artist + ' ' + t.album).toLowerCase().includes(q); });
-  if(S.view === 'all'){
-    const g = id => S.tracks.get(id);
+  if(q) ids = ids.filter(id => { const t = g(id); return (t.title + ' ' + t.artist + ' ' + t.album).toLowerCase().includes(q); });
+  if(v === 'recent') ids = ids.sort((a, b) => g(b).lastPlayed - g(a).lastPlayed).slice(0, 100);
+  else if(v === 'all' || v === 'fav'){
     if(S.sort === 'title') ids.sort((a, b) => col.compare(g(a).title, g(b).title));
     else if(S.sort === 'artist') ids.sort((a, b) => col.compare(g(a).artist, g(b).artist));
     else if(S.sort === 'album') ids.sort((a, b) => col.compare(g(a).album, g(b).album));
+    else if(S.sort === 'plays') ids.sort((a, b) => ((g(b).plays || 0) - (g(a).plays || 0)) || (b - a));
     else ids.sort((a, b) => b - a);
   }
   return ids;
 }
-function coverUrlHtml(url, hue, cls){
+
+/* ---- عکس‌ها: فقط عکس ردیف‌های دیده‌شده در رم نگه داشته می‌شوند ---- */
+const COVER_CAP = 150;
+function coverUrl(id){ const u = S.covers.get(id); if(u){ S.covers.delete(id); S.covers.set(id, u); } return u || null; }
+function dropCoverUrl(id){ const u = S.covers.get(id); if(u){ URL.revokeObjectURL(u); S.covers.delete(id); } }
+function putCoverUrl(id, blob){
+  dropCoverUrl(id);
+  const u = URL.createObjectURL(blob); S.covers.set(id, u);
+  if(S.covers.size > COVER_CAP){
+    for(const [k, v] of S.covers){ if(S.covers.size <= COVER_CAP) break; if(k === S.curId || k === id) continue; URL.revokeObjectURL(v); S.covers.delete(k); }
+  }
+  return u;
+}
+async function ensureCover(id){
+  const known = coverUrl(id); if(known) return known;
+  const t = S.tracks.get(id); if(!t || !t.hasCover) return null;
+  let b = null; try{ b = await dbGet('covers', id); }catch(e){}
+  if(!b || !S.tracks.has(id)) return null;
+  return coverUrl(id) || putCoverUrl(id, b);
+}
+function hydrateCovers(root){
+  root.querySelectorAll('.cover[data-cid]:not([data-ok])').forEach(el => {
+    ensureCover(Number(el.dataset.cid)).then(u => {
+      if(u && el.isConnected){ el.style.cssText = 'background-image:url("' + u + '")'; el.innerHTML = ''; el.dataset.ok = '1'; }
+    });
+  });
+}
+function coverUrlHtml(url, hue, cls, cid){
   if(url) return '<div class="cover ' + (cls || '') + '" style="background-image:url(&quot;' + url + '&quot;)"></div>';
-  return '<div class="cover ' + (cls || '') + '" style="background:linear-gradient(135deg,hsl(' + hue + ' 55% 36%),hsl(' + ((hue + 45) % 360) + ' 55% 24%))">' + icon('music') + '</div>';
+  return '<div class="cover ' + (cls || '') + '"' + (cid != null ? ' data-cid="' + cid + '"' : '') + ' style="background:linear-gradient(135deg,hsl(' + hue + ' 55% 36%),hsl(' + ((hue + 45) % 360) + ' 55% 24%))">' + icon('music') + '</div>';
 }
 function coverHtml(t, cls){
   if(!t) return coverUrlHtml(null, 260, cls);
-  return coverUrlHtml(S.covers.get(t.id) || null, (t.id * 57) % 360, cls);
+  return coverUrlHtml(t.hasCover ? coverUrl(t.id) : null, (t.id * 57) % 360, cls, t.hasCover ? t.id : null);
 }
 
+const VIEW_TITLES = {all:'همه آهنگ‌ها', fav:'علاقه‌مندی‌ها', recent:'اخیراً پخش‌شده'};
 function renderSide(){
   $('#cAll').textContent = S.tracks.size;
-  document.querySelector('.nav-item[data-view="all"]').classList.toggle('active', S.view === 'all');
+  let nf = 0; for(const t of S.tracks.values()) if(t.fav) nf++;
+  $('#cFav').textContent = nf;
+  document.querySelectorAll('#side nav > .nav-item[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === String(S.view)));
   $('#plList').innerHTML = S.playlists.length
     ? S.playlists.map(p => '<button class="nav-item ' + (S.view === p.id ? 'active' : '') + '" data-view="' + p.id + '">' + icon('list') +
         '<span class="nm" dir="auto">' + esc(p.name) + '</span><span class="count">' + p.trackIds.filter(i => S.tracks.has(i)).length + '</span></button>').join('')
     : '<div class="muted small pad">هنوز پلی‌لیستی نساخته‌اید</div>';
 }
 function renderHeader(ids){
-  const inAll = S.view === 'all';
-  const p = inAll ? null : getPl(S.view);
-  $('#viewTitle').textContent = inAll ? 'همه آهنگ‌ها' : (p ? p.name : '');
+  const pl = isPlView() ? getPl(S.view) : null;
+  $('#viewTitle').textContent = pl ? pl.name : (VIEW_TITLES[S.view] || '');
   const total = ids.reduce((s, id) => s + (S.tracks.get(id).duration || 0), 0);
   $('#viewSub').textContent = ids.length + ' آهنگ' + (total ? ' · ' + fmt(total) : '');
-  $('#sortSel').classList.toggle('hidden', !inAll);
+  $('#sortSel').classList.toggle('hidden', !(S.view === 'all' || S.view === 'fav'));
   $('#btnPlayAll').classList.toggle('hidden', !ids.length);
-  $('#plActions').innerHTML = inAll ? '' :
+  $('#plActions').innerHTML = !isPlView() ? '' :
     '<button class="btn" data-pa="rename">' + icon('edit') + ' تغییر نام</button><button class="btn danger" data-pa="del">' + icon('trash') + ' حذف پلی‌لیست</button>';
+}
+
+/* ---- لیست مجازی: فقط ردیف‌های دیده‌شده ساخته می‌شوند (برای کتابخانهٔ بزرگ هم سبک می‌ماند) ---- */
+const ROW_H = 56;
+const VIS = {ids:[], start:-1, end:-1, sortable:false};
+function rowHtml(id, i){
+  const t = S.tracks.get(id), srt = VIS.sortable;
+  return '<div class="row' + (id === S.curId ? ' cur' : '') + (srt ? ' srt' : '') + '" data-id="' + id + '" data-i="' + i + '"' + (srt ? ' draggable="true"' : '') + '>' +
+    '<div class="c-idx"><span class="num">' + (i + 1) + '</span><span class="eq">' + icon('play', 'fill') + '</span></div>' +
+    '<div>' + coverHtml(t) + '</div>' +
+    '<div class="c-main"><div class="t" dir="auto">' + esc(t.title) + (t.fav ? '<span class="favmark">' + icon('heart', 'fill') + '</span>' : '') + '</div><div class="a" dir="auto">' + esc(t.artist || 'خواننده نامشخص') + '</div></div>' +
+    '<div class="c-album" dir="auto">' + esc(t.album) + '</div>' +
+    '<div class="c-dur"' + (t.plays ? ' title="' + t.plays + ' بار پخش"' : '') + '>' + (t.duration ? fmt(t.duration) : '—') + '</div>' +
+    '<div class="c-act">' +
+      '<button data-act="fav" class="' + (t.fav ? 'on' : '') + '" title="' + (t.fav ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها') + '">' + icon('heart') + '</button>' +
+      '<button data-act="edit" title="ویرایش">' + icon('edit') + '</button>' +
+      '<button data-act="more" title="گزینه‌های بیشتر">' + icon('more') + '</button>' +
+    '</div></div>';
+}
+function renderRows(force){
+  const L = $('#list'), box = $('#rows'); if(!box) return;
+  const ids = VIS.ids, n = ids.length;
+  const th = L.querySelector('.thead');
+  const top = Math.max(0, L.scrollTop - (th ? th.offsetHeight : 34));
+  const vs = Math.floor(top / ROW_H), ve = Math.ceil((top + L.clientHeight) / ROW_H);
+  if(!force && vs >= VIS.start && ve <= VIS.end && VIS.start >= 0) return;
+  const start = Math.max(0, vs - 10), end = Math.min(n, ve + 10);
+  VIS.start = start; VIS.end = end;
+  box.style.paddingTop = start * ROW_H + 'px';
+  box.style.paddingBottom = (n - end) * ROW_H + 'px';
+  let h = ''; for(let i = start; i < end; i++) h += rowHtml(ids[i], i);
+  box.innerHTML = h;
+  hydrateCovers(box);
 }
 function renderList(){
   const ids = viewIds();
+  VIS.ids = ids; VIS.start = VIS.end = -1;
+  VIS.sortable = isPlView() && !S.q.trim();
   renderHeader(ids);
-  const L = $('#list');
+  const L = $('#list'), st = L.scrollTop;
   if(!ids.length){
     let msg;
     if(S.q.trim()) msg = '<div class="big">' + icon('search') + '</div><div>نتیجه‌ای پیدا نشد.</div>';
     else if(S.view === 'all') msg = '<div class="big">' + icon('music') + '</div><div>کتابخانه خالی است.<br>فایل‌های موزیک را اینجا بکشید و رها کنید<br>یا روی «افزودن آهنگ» بزنید.' + (FOLDER ? '<br>می‌توانید فایل‌ها را مستقیم داخل پوشهٔ آهنگ‌ها بریزید و «رفرش پوشه» را بزنید.' : '') + '</div>';
-    else msg = '<div class="big">' + icon('list') + '</div><div>این پلی‌لیست خالی است.<br>در «همه آهنگ‌ها» روی دکمهٔ + کنار هر آهنگ بزنید تا اضافه شود.</div>';
+    else if(S.view === 'fav') msg = '<div class="big">' + icon('heart') + '</div><div>هنوز آهنگی را علاقه‌مندی نکرده‌اید.<br>روی قلب کنار هر آهنگ بزنید.</div>';
+    else if(S.view === 'recent') msg = '<div class="big">' + icon('clock') + '</div><div>هنوز آهنگی پخش نشده است.</div>';
+    else msg = '<div class="big">' + icon('list') + '</div><div>این پلی‌لیست خالی است.<br>روی دکمهٔ ⋮ کنار هر آهنگ بزنید و «افزودن به پلی‌لیست» را انتخاب کنید.</div>';
     L.innerHTML = '<div class="empty">' + msg + '</div>';
     return;
   }
-  const inAll = S.view === 'all';
-  L.innerHTML = '<div class="thead"><span class="c-idx">#</span><span></span><span>آهنگ</span><span class="c-album">آلبوم</span><span style="text-align:center">مدت</span><span></span></div>' +
-    ids.map((id, i) => {
-      const t = S.tracks.get(id);
-      return '<div class="row' + (id === S.curId ? ' cur' : '') + '" data-id="' + id + '">' +
-        '<div class="c-idx"><span class="num">' + (i + 1) + '</span><span class="eq">' + icon('play', 'fill') + '</span></div>' +
-        '<div>' + coverHtml(t) + '</div>' +
-        '<div class="c-main"><div class="t" dir="auto">' + esc(t.title) + '</div><div class="a" dir="auto">' + esc(t.artist || 'خواننده نامشخص') + '</div></div>' +
-        '<div class="c-album" dir="auto">' + esc(t.album) + '</div>' +
-        '<div class="c-dur">' + (t.duration ? fmt(t.duration) : '—') + '</div>' +
-        '<div class="c-act">' +
-          '<button data-act="edit" title="ویرایش">' + icon('edit') + '</button>' +
-          '<button data-act="addpl" title="افزودن به پلی‌لیست">' + icon('plus') + '</button>' +
-          (inAll ? '<button class="d" data-act="del" title="حذف از کتابخانه">' + icon('trash') + '</button>'
-                 : '<button class="d" data-act="rmpl" title="حذف از این پلی‌لیست">' + icon('minus') + '</button>') +
-        '</div></div>';
-    }).join('');
+  L.innerHTML = '<div class="thead"><span class="c-idx">#</span><span></span><span>آهنگ</span><span class="c-album">آلبوم</span><span style="text-align:center">مدت</span><span></span></div><div id="rows"></div>';
+  L.scrollTop = st;
+  renderRows(true);
 }
+let scrollRaf = 0;
+$('#list').addEventListener('scroll', () => { if(scrollRaf) return; scrollRaf = requestAnimationFrame(() => { scrollRaf = 0; renderRows(false); }); }, {passive:true});
+window.addEventListener('resize', () => renderRows(false));
 function markCurrent(){
   document.querySelectorAll('.row.cur').forEach(r => r.classList.remove('cur'));
   if(S.curId != null){ const r = document.querySelector('.row[data-id="' + S.curId + '"]'); if(r) r.classList.add('cur'); }
 }
 function renderAll(){ renderSide(); renderList(); }
-function setView(v){ S.view = v; S.q = ''; $('#q').value = ''; renderAll(); }
+function setView(v){ S.view = v; S.q = ''; $('#q').value = ''; renderAll(); $('#list').scrollTop = 0; }
 
 /* ================= playback control ================= */
 const curDur = () => isFinite(audio.duration) ? audio.duration : ((S.tracks.get(S.curId) || {}).duration || 0);
@@ -672,11 +1011,18 @@ const curDur = () => isFinite(audio.duration) ? audio.duration : ((S.tracks.get(
 function updateNowPlaying(){
   const t = S.tracks.get(S.curId);
   $('#npCover').innerHTML = coverHtml(t);
+  hydrateCovers($('#npCover'));
+  syncNpFav();
   $('#npTitle').textContent = t ? t.title : 'آهنگی انتخاب نشده';
   $('#npArtist').textContent = t ? ([t.artist, t.album].filter(Boolean).join(' · ') || '—') : 'یک آهنگ را برای پخش انتخاب کنید';
   document.title = t && S.playing ? t.title + ' — موزیک پلیر' : 'موزیک پلیر من';
   if(t) setMediaSession(t);
   markCurrent();
+}
+function syncNpFav(){
+  const t = S.tracks.get(S.curId), b = $('#npFav');
+  b.classList.toggle('hidden', !t); b.classList.toggle('on', !!(t && t.fav));
+  b.title = t && t.fav ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها';
 }
 function syncPlayBtn(){
   $('#btnPlay').innerHTML = icon(S.playing ? 'pause' : 'play', 'fill');
@@ -686,17 +1032,24 @@ function syncPlayBtn(){
 function setMediaSession(t){
   if(!('mediaSession' in navigator)) return;
   try{
-    navigator.mediaSession.metadata = new MediaMetadata({
+    const set = u => { navigator.mediaSession.metadata = new MediaMetadata({
       title: t.title, artist: t.artist, album: t.album,
-      artwork: S.covers.has(t.id) ? [{src: S.covers.get(t.id), sizes: '500x500', type: 'image/jpeg'}] : []
-    });
+      artwork: u ? [{src: u, sizes: '320x320', type: 'image/jpeg'}] : []
+    }); };
+    set(t.hasCover ? coverUrl(t.id) : null);
+    if(t.hasCover && !coverUrl(t.id)) ensureCover(t.id).then(u => { if(u && S.curId === t.id) set(u); });
   }catch(e){}
 }
-async function playIndex(i){
+function playIndex(i){
   if(i < 0 || i >= S.queue.length){ stopPlayback(); return; }
-  const id = S.queue[i], t = S.tracks.get(id);
+  return startTrack(S.queue[i], i);
+}
+// qi: جای آهنگ در لیست پخش؛ برای آهنگ‌های «صف» null است تا بعد از آن‌ها لیست از همان‌جا ادامه پیدا کند
+async function startTrack(id, qi){
+  const t = S.tracks.get(id);
   if(!t) return;
-  S.qi = i; S.curId = id;
+  if(qi != null) S.qi = qi;
+  S.curId = id; S.counted = false;
   ensureGraph();
   updateNowPlaying();
   if(FOLDER){
@@ -817,8 +1170,12 @@ function stopPlayback(){
   S.playing = false; syncPlayBtn();
 }
 function next(auto){
+  if(auto && S.repeat === 2 && S.curId != null){ audio.currentTime = 0; audio.play(); return; }
+  if(S.upNext.length){
+    const id = S.upNext.shift(); syncQueueBadge(); refreshQueueModal();
+    if(S.tracks.has(id)){ startTrack(id, null); return; }
+  }
   if(!S.queue.length) return;
-  if(auto && S.repeat === 2){ audio.currentTime = 0; audio.play(); return; }
   let ni;
   if(S.shuffle && S.queue.length > 1){ do{ ni = Math.floor(Math.random() * S.queue.length); }while(ni === S.qi); }
   else {
@@ -846,19 +1203,42 @@ function togglePlay(){
 }
 
 let seeking = false;
-audio.addEventListener('play', () => { S.playing = true; syncPlayBtn(); });
-audio.addEventListener('pause', () => { S.playing = false; syncPlayBtn(); });
-audio.addEventListener('ended', () => next(true));
+audio.addEventListener('play', () => { S.playing = true; syncPlayBtn(); ensureGraph(); });
+audio.addEventListener('pause', () => {
+  S.playing = false; syncPlayBtn(); saveResume();
+  // وقتی مدتی پخش نیست، موتور صدا را بخواب بگذار تا پردازنده درگیر نماند
+  clearTimeout(idleT);
+  if(ctx) idleT = setTimeout(() => { if(audio.paused && ctx && ctx.state === 'running') ctx.suspend().catch(() => {}); }, 3000);
+});
+audio.addEventListener('ended', () => {
+  if(sleepT && sleepT.eot){ sleepCancel(); S.playing = false; syncPlayBtn(); return; }
+  next(true);
+});
 audio.addEventListener('loadedmetadata', () => {
   applyFx();
   const t = S.tracks.get(S.curId);
   if(t && isFinite(audio.duration) && Math.abs((t.duration || 0) - audio.duration) > 1){
-    t.duration = audio.duration; dbPut('tracks', t).catch(() => {}); renderList();
+    t.duration = audio.duration; dbPut('tracks', t).catch(() => {}); renderRows(true);
   }
   $('#tDur').textContent = fmt(curDur());
 });
+let lastResume = 0;
+function saveResume(){
+  const t = S.tracks.get(S.curId); if(!t || !t.file) return;
+  lastResume = Date.now();
+  store.set('mp_resume', {file: t.file, t: Math.floor(audio.currentTime)});
+}
+function countPlay(id){
+  const t = S.tracks.get(id); if(!t) return;
+  t.plays = (t.plays || 0) + 1; t.lastPlayed = Date.now();
+  dbPut('tracks', t).catch(() => {});
+}
 audio.addEventListener('timeupdate', () => {
-  if(seeking) return;
+  if(S.playing){
+    if(!S.counted && S.curId != null){ const d = curDur(); if(audio.currentTime >= Math.min(10, d ? d * 0.5 : 10)){ S.counted = true; countPlay(S.curId); } }
+    if(Date.now() - lastResume > 5000) saveResume();
+  }
+  if(seeking || document.hidden) return;
   const d = curDur();
   $('#seek').value = d ? Math.min(1000, audio.currentTime / d * 1000) : 0;
   $('#tCur').textContent = fmt(audio.currentTime);
@@ -921,12 +1301,209 @@ $('#fx').addEventListener('click', e => {
     fxChanged();
   }
 });
-$('#btnFx').addEventListener('click', e => { e.stopPropagation(); $('#fx').classList.toggle('hidden'); });
 $('#fxClose').addEventListener('click', () => $('#fx').classList.add('hidden'));
-document.addEventListener('mousedown', e => {
-  const f = $('#fx');
-  if(!f.classList.contains('hidden') && !f.contains(e.target) && !$('#btnFx').contains(e.target)) f.classList.add('hidden');
+
+/* ================= اکولایزر ================= */
+function updEqLabels(){
+  S.eq.g.forEach((g, i) => { const e = $('#eqg' + i); if(e) e.textContent = (g > 0 ? '+' : '') + g; });
+  $('#btnEq').classList.toggle('on', eqActive());
+}
+function drawEq(){
+  $('#eqBands').innerHTML = EQ_FREQ.map((f, i) => '<div class="eqb"><span class="g" id="eqg' + i + '"></span><input type="range" min="-12" max="12" step="0.5" data-b="' + i + '" value="' + S.eq.g[i] + '"><span class="f">' + (f >= 1000 ? (f / 1000) + 'k' : f) + ' Hz</span></div>').join('');
+  $('#eqPresets').innerHTML = EQ_PRESETS.map((p, i) => '<button class="chip" data-p="' + i + '">' + p[0] + '</button>').join('');
+  updEqLabels();
+}
+function eqChanged(){ store.set('mp_eq', S.eq); applyFx(); updEqLabels(); }
+$('#eqBands').addEventListener('input', e => { const b = e.target.dataset.b; if(b == null) return; S.eq.g[+b] = +e.target.value; eqChanged(); });
+$('#eqPresets').addEventListener('click', e => {
+  const b = e.target.closest('[data-p]'); if(!b) return;
+  S.eq.g = EQ_PRESETS[+b.dataset.p][1].slice(); drawEq(); eqChanged();
 });
+
+/* ================= تایمر خواب ================= */
+let sleepT = null;
+function updSleepUI(){
+  const badge = $('#sleepBadge'), st = $('#sleepStatus');
+  $('#sleepCancel').classList.toggle('hidden', !sleepT);
+  $('#btnSleep').classList.toggle('on', !!sleepT);
+  if(!sleepT){ badge.classList.add('hidden'); st.textContent = 'تایمر خاموش است.'; return; }
+  badge.classList.remove('hidden');
+  if(sleepT.eot){ badge.textContent = '●'; st.textContent = 'پخش بعد از پایان این آهنگ متوقف می‌شود.'; return; }
+  const m = Math.max(1, Math.ceil((sleepT.end - Date.now()) / 60000));
+  badge.textContent = m; st.textContent = 'پخش حدود ' + m + ' دقیقهٔ دیگر متوقف می‌شود.';
+}
+function sleepCancel(){
+  if(sleepT){ clearInterval(sleepT.iv); sleepT = null; audio.volume = +volEl.value; }
+  updSleepUI();
+}
+function sleepTick(){
+  if(!sleepT || sleepT.eot) return;
+  const left = (sleepT.end - Date.now()) / 1000;
+  if(left <= 0){ audio.pause(); sleepCancel(); toast('تایمر خواب: پخش متوقف شد'); return; }
+  if(left < 20 && !audio.paused) audio.volume = Math.max(0, +volEl.value * left / 20);   // کم شدن آرام صدا
+  updSleepUI();
+}
+function sleepStart(min){
+  sleepCancel();
+  sleepT = min === 'eot' ? {eot:true} : {end:Date.now() + min * 60000, iv:setInterval(sleepTick, 1000)};
+  updSleepUI();
+}
+$('#sleepChips').addEventListener('click', e => { const b = e.target.closest('[data-min]'); if(!b) return; const v = b.dataset.min; sleepStart(v === 'eot' ? 'eot' : +v); });
+$('#sleepCancel').addEventListener('click', sleepCancel);
+
+/* ---- پنجره‌های شناور پایین (سرعت/پیچ، اکولایزر، تایمر) ---- */
+const POPS = [['#fx', '#btnFx'], ['#eqPop', '#btnEq'], ['#sleepPop', '#btnSleep']];
+function togglePop(id){
+  for(const [p] of POPS) if(p !== id) $(p).classList.add('hidden');
+  $(id).classList.toggle('hidden');
+}
+for(const [p, b] of POPS) $(b).addEventListener('click', e => { e.stopPropagation(); togglePop(p); });
+$('#eqClose').addEventListener('click', () => $('#eqPop').classList.add('hidden'));
+$('#sleepClose').addEventListener('click', () => $('#sleepPop').classList.add('hidden'));
+document.addEventListener('mousedown', e => {
+  for(const [p, b] of POPS){ const f = $(p); if(!f.classList.contains('hidden') && !f.contains(e.target) && !$(b).contains(e.target)) f.classList.add('hidden'); }
+});
+
+/* ================= علاقه‌مندی‌ها ================= */
+async function toggleFav(id){
+  const t = S.tracks.get(id); if(!t) return;
+  t.fav = !t.fav;
+  try{ await dbPut('tracks', t); }catch(e){ console.error(e); }
+  renderSide();
+  if(S.view === 'fav') renderList(); else renderRows(true);
+  if(id === S.curId) syncNpFav();
+}
+$('#npFav').addEventListener('click', () => { if(S.curId != null) toggleFav(S.curId); });
+
+/* ================= صف پخش ================= */
+function syncQueueBadge(){
+  const b = $('#qBadge'); b.classList.toggle('hidden', !S.upNext.length); b.textContent = S.upNext.length;
+}
+function enqueue(id, front){
+  if(!S.tracks.has(id)) return;
+  if(S.curId == null && !S.queue.length){ playList([id], id); return; }
+  if(front) S.upNext.unshift(id); else S.upNext.push(id);
+  syncQueueBadge(); refreshQueueModal();
+  toast(front ? 'بعد از این آهنگ پخش می‌شود' : 'به صف اضافه شد');
+}
+let queueRefresh = null;
+function refreshQueueModal(){ if(queueRefresh) queueRefresh(); }
+function openQueue(){
+  openModal('<h3>صف پخش</h3><div id="qBody"></div><div class="actions"><button class="btn danger" id="qClear">خالی کردن صف</button><button class="btn primary" data-close>بستن</button></div>',
+    m => {
+      const row = (t, i) => '<div class="qrow">' + coverHtml(t) + '<div class="qt"><div dir="auto">' + esc(t.title) + '</div><div class="a" dir="auto">' + esc(t.artist || 'خواننده نامشخص') + '</div></div>' +
+        (i >= 0 ? '<div class="qb"><button data-q="up" data-i="' + i + '" title="بالا">' + icon('up') + '</button><button data-q="down" data-i="' + i + '" title="پایین">' + icon('down') + '</button><button data-q="rm" data-i="' + i + '" title="حذف از صف">' + icon('x') + '</button></div>' : '') + '</div>';
+      const draw = () => {
+        const cur = S.tracks.get(S.curId);
+        let h = '<div class="qh">در حال پخش</div>' + (cur ? row(cur, -1) : '<div class="muted small pad">چیزی پخش نمی‌شود.</div>');
+        h += '<div class="qh">صف (بعدی‌ها)</div>' + (S.upNext.length
+          ? S.upNext.map((id, i) => S.tracks.has(id) ? row(S.tracks.get(id), i) : '').join('')
+          : '<div class="muted small pad">صف خالی است. از منوی ⋮ کنار آهنگ، «پخش بعدی» یا «افزودن به صف» را بزنید.</div>');
+        const rest = [];
+        for(let i = S.qi + 1; i < S.queue.length && rest.length < 15; i++) if(S.tracks.has(S.queue[i])) rest.push(S.queue[i]);
+        if(rest.length) h += '<div class="qh">ادامهٔ لیست</div>' + rest.map(id => row(S.tracks.get(id), -1)).join('');
+        m.querySelector('#qBody').innerHTML = h;
+        hydrateCovers(m);
+      };
+      queueRefresh = draw; draw();
+      m.querySelector('#qBody').addEventListener('click', e => {
+        const b = e.target.closest('[data-q]'); if(!b) return;
+        const i = +b.dataset.i, q = S.upNext;
+        if(b.dataset.q === 'rm') q.splice(i, 1);
+        else if(b.dataset.q === 'up' && i > 0) [q[i - 1], q[i]] = [q[i], q[i - 1]];
+        else if(b.dataset.q === 'down' && i < q.length - 1) [q[i + 1], q[i]] = [q[i], q[i + 1]];
+        syncQueueBadge(); draw();
+      });
+      m.querySelector('#qClear').onclick = () => { S.upNext = []; syncQueueBadge(); draw(); };
+    }, () => { queueRefresh = null; });
+}
+$('#btnQueue').addEventListener('click', openQueue);
+
+/* ================= منوی ⋮ و کلیک راست ================= */
+function closeMenu(){ const m = $('#ctx'); if(m) m.remove(); }
+function openMenu(id, x, y){
+  closeMenu();
+  const t = S.tracks.get(id); if(!t) return;
+  const items = [
+    ['playnext', 'پخش بعدی', 'next'], ['queue', 'افزودن به صف', 'queue'],
+    ['fav', t.fav ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها', 'heart'],
+    ['addpl', 'افزودن به پلی‌لیست', 'plus'], ['edit', 'ویرایش مشخصات', 'edit'], null,
+    isPlView() ? ['rmpl', 'حذف از این پلی‌لیست', 'minus', 'danger'] : ['del', FOLDER ? 'حذف (انتقال به سطل بازیافت)' : 'حذف از کتابخانه', 'trash', 'danger']
+  ];
+  const m = document.createElement('div'); m.id = 'ctx';
+  m.innerHTML = items.map(it => it ? '<button data-m="' + it[0] + '" class="' + (it[3] || '') + '">' + icon(it[2]) + '<span>' + it[1] + '</span></button>' : '<div class="sep"></div>').join('');
+  document.body.appendChild(m);
+  const r = m.getBoundingClientRect();
+  m.style.left = Math.max(8, Math.min(x, innerWidth - r.width - 8)) + 'px';
+  m.style.top = Math.max(8, (y + r.height > innerHeight - 8) ? y - r.height : y) + 'px';
+  m.addEventListener('click', e => { const b = e.target.closest('button'); if(!b) return; closeMenu(); rowAction(b.dataset.m, id); });
+}
+function rowAction(a, id){
+  if(a === 'edit') openEdit(id);
+  else if(a === 'addpl') openAddToPlaylist(id);
+  else if(a === 'del') deleteTrack(id);
+  else if(a === 'fav') toggleFav(id);
+  else if(a === 'playnext') enqueue(id, true);
+  else if(a === 'queue') enqueue(id, false);
+  else if(a === 'rmpl'){
+    const p = getPl(S.view); if(!p) return;
+    p.trackIds = p.trackIds.filter(x => x !== id);
+    dbPut('playlists', p).then(renderAll);
+  }
+}
+document.addEventListener('mousedown', e => { if(!e.target.closest('#ctx')) closeMenu(); });
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closeMenu(); });
+$('#list').addEventListener('scroll', closeMenu, {passive:true});
+$('#list').addEventListener('contextmenu', e => {
+  const row = e.target.closest('.row'); if(!row) return;
+  e.preventDefault(); openMenu(Number(row.dataset.id), e.clientX, e.clientY);
+});
+
+/* ================= جابه‌جایی آهنگ‌ها در پلی‌لیست با کشیدن ================= */
+let dragId = null;
+const clearDropMarks = () => document.querySelectorAll('.row.drop-before,.row.drop-after').forEach(r => r.classList.remove('drop-before', 'drop-after'));
+$('#list').addEventListener('dragstart', e => {
+  const row = e.target.closest && e.target.closest('.row.srt'); if(!row) return;
+  dragId = Number(row.dataset.id);
+  e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', 'track:' + dragId);
+  row.classList.add('dragging');
+});
+$('#list').addEventListener('dragover', e => {
+  if(dragId == null) return;
+  e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+  clearDropMarks();
+  const row = e.target.closest('.row');
+  if(row && Number(row.dataset.id) !== dragId){ const r = row.getBoundingClientRect(); row.classList.add(e.clientY > r.top + r.height / 2 ? 'drop-after' : 'drop-before'); }
+  const L = $('#list'), lr = L.getBoundingClientRect();     // اسکرول خودکار کنار لبه‌ها
+  if(e.clientY < lr.top + 50) L.scrollTop -= 14; else if(e.clientY > lr.bottom - 50) L.scrollTop += 14;
+});
+$('#list').addEventListener('drop', async e => {
+  if(dragId == null) return;
+  e.preventDefault();
+  const row = e.target.closest('.row'), p = getPl(S.view), moved = dragId;
+  dragId = null; clearDropMarks();
+  if(!row || !p || !VIS.sortable) return;
+  const target = Number(row.dataset.id); if(target === moved) return;
+  const r = row.getBoundingClientRect(), after = e.clientY > r.top + r.height / 2;
+  const order = VIS.ids.filter(x => x !== moved);
+  order.splice(order.indexOf(target) + (after ? 1 : 0), 0, moved);
+  p.trackIds = order;
+  try{ await dbPut('playlists', p); }catch(err){ console.error(err); }
+  renderList();
+});
+$('#list').addEventListener('dragend', () => { dragId = null; clearDropMarks(); document.querySelectorAll('.row.dragging').forEach(r => r.classList.remove('dragging')); });
+
+/* ================= بارگذاری دوبارهٔ تنظیمات (بعد از بازیابی پشتیبان) ================= */
+function reloadSettings(){
+  S.sort = store.get('mp_sort', 'new'); $('#sortSel').value = S.sort;
+  S.shuffle = store.get('mp_shuffle', false); S.repeat = store.get('mp_repeat', 0);
+  S.fx = Object.assign({speed:1, pitch:0, link:false}, store.get('mp_fx', {}));
+  S.eq = loadEq();
+  theme = loadTheme(); applyTheme();
+  const v = store.get('mp_vol', 0.8); audio.volume = v; volEl.value = v;
+  syncVolIcon(); syncModes(); syncFxUI(); drawEq(); applyFx();
+}
+
 
 /* ================= modals ================= */
 function openModal(html, onMount, onClose){
@@ -966,26 +1543,152 @@ function askConfirm(msg, okLabel){
   });
 }
 
+/* ================= نوشتن مشخصات داخل خود فایل MP3 (اختیاری و امن) =================
+   فقط تگ ID3v2 ابتدای فایل بازسازی می‌شود. فریم‌های دیگر (غیر از نام، خواننده، آلبوم و عکس) بدون تغییر کپی می‌شوند
+   و بخش صوتی فایل بایت‌به‌بایت همان می‌ماند. نتیجه اول در فایل موقت نوشته و بررسی می‌شود؛ فقط اگر درست بود جای فایل اصلی می‌نشیند. */
+const te = new TextEncoder();
+const u32be = n => [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255];
+const ssEnc = n => [(n >>> 21) & 127, (n >>> 14) & 127, (n >>> 7) & 127, n & 127];
+const ssDec = (b, p) => ((b[p] & 0x7f) << 21) | ((b[p + 1] & 0x7f) << 14) | ((b[p + 2] & 0x7f) << 7) | (b[p + 3] & 0x7f);
+const u32dec = (b, p) => ((b[p] << 24) | (b[p + 1] << 16) | (b[p + 2] << 8) | b[p + 3]) >>> 0;
+function cat(parts){ let n = 0; for(const p of parts) n += p.length; const o = new Uint8Array(n); let k = 0; for(const p of parts){ o.set(p, k); k += p.length; } return o; }
+function id3Frame(id, body, ver){
+  return cat([te.encode(id), Uint8Array.from(ver === 4 ? ssEnc(body.length) : u32be(body.length)), Uint8Array.of(0, 0), body]);
+}
+function id3Text(id, text, ver){
+  if(ver === 4) return id3Frame(id, cat([Uint8Array.of(3), te.encode(text)]), ver);
+  const u = new Uint8Array(text.length * 2);
+  for(let i = 0; i < text.length; i++){ const c = text.charCodeAt(i); u[2 * i] = c & 255; u[2 * i + 1] = c >> 8; }
+  return id3Frame(id, cat([Uint8Array.of(1, 0xFF, 0xFE), u]), ver);
+}
+function id3Apic(bytes, ver){
+  return id3Frame('APIC', cat([Uint8Array.of(0), te.encode('image/jpeg'), Uint8Array.of(0, 3, 0), bytes]), ver);
+}
+// buf: کل تگ (۱۰ بایت سرآیند + اندازهٔ تگ). اگر تگ نباشد null؛ اگر قابل‌اعتماد نباشد خطا
+function parseId3(buf){
+  if(buf.length < 10 || buf[0] !== 0x49 || buf[1] !== 0x44 || buf[2] !== 0x33) return null;
+  const ver = buf[3], flags = buf[5];
+  if(ver !== 3 && ver !== 4) throw new Error('نسخهٔ تگ این فایل (ID3v2.' + ver + ') پشتیبانی نمی‌شود');
+  if(flags & 0x80) throw new Error('تگ این فایل از نوع unsynchronisation سراسری است و تغییرش امن نیست');
+  if(buf[6] & 0x80 || buf[7] & 0x80 || buf[8] & 0x80 || buf[9] & 0x80) throw new Error('سرآیند تگ خراب است');
+  const size = ssDec(buf, 6), end = 10 + size;
+  if(buf.length < end) throw new Error('تگ ناقص است');
+  let p = 10;
+  if(flags & 0x40) p += ver === 4 ? ssDec(buf, p) : u32dec(buf, p) + 4;
+  const frames = [];
+  while(p + 10 <= end){
+    if(buf[p] === 0) break;                                   // پدینگ
+    const id = String.fromCharCode(buf[p], buf[p + 1], buf[p + 2], buf[p + 3]);
+    if(!/^[A-Z0-9]{4}$/.test(id)) throw new Error('ساختار تگ خراب است');
+    if(ver === 4 && (buf[p + 4] & 0x80 || buf[p + 5] & 0x80 || buf[p + 6] & 0x80 || buf[p + 7] & 0x80)) throw new Error('اندازهٔ فریم تگ استاندارد نیست');
+    const fs = ver === 4 ? ssDec(buf, p + 4) : u32dec(buf, p + 4);
+    if(p + 10 + fs > end) throw new Error('ساختار تگ خراب است');
+    frames.push({id, raw: buf.subarray(p, p + 10 + fs)});
+    p += 10 + fs;
+  }
+  return {ver, frames, audioStart: end + (ver === 4 && (flags & 0x10) ? 10 : 0)};
+}
+// ch: {title, artist, album, cover} — cover: undefined = دست نزن، null = حذف، Uint8Array(JPEG) = جایگزین
+function buildId3(parsed, ch){
+  const ver = parsed ? parsed.ver : 3;
+  const drop = new Set(['TIT2', 'TPE1', 'TALB']);
+  if(ch.cover !== undefined) drop.add('APIC');
+  const parts = [];
+  if(parsed) for(const f of parsed.frames) if(!drop.has(f.id)) parts.push(f.raw);
+  if(ch.title) parts.push(id3Text('TIT2', ch.title, ver));
+  if(ch.artist) parts.push(id3Text('TPE1', ch.artist, ver));
+  if(ch.album) parts.push(id3Text('TALB', ch.album, ver));
+  if(ch.cover) parts.push(id3Apic(ch.cover, ver));
+  const frames = cat(parts), PAD = 512, size = frames.length + PAD;
+  return cat([Uint8Array.of(0x49, 0x44, 0x33, ver, 0, 0, ...ssEnc(size)), frames, new Uint8Array(PAD)]);
+}
+async function readAt(path, pos, len){
+  const r = await diskReader(path);
+  try{ return await r.rangeReader(pos, len); } finally{ try{ await r.close(); }catch(e){} }
+}
+const sameBytes = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+async function writeTagsToFile(t, ch){
+  const path = fullPath(t.file), tmp = path + '.tagtmp';
+  let parsed = null, tagLen = 0;
+  const head = await readAt(path, 0, 10);
+  if(head.length >= 10 && head[0] === 0x49 && head[1] === 0x44 && head[2] === 0x33){
+    if(head[6] & 0x80 || head[7] & 0x80 || head[8] & 0x80 || head[9] & 0x80) throw new Error('سرآیند تگ خراب است');
+    const full = await readAt(path, 0, 10 + ssDec(head, 6));
+    parsed = parseId3(full); tagLen = parsed.audioStart;
+  }
+  const newTag = buildId3(parsed, ch);
+  const oldSize = (await FS.stat(path)).size, audioLen = oldSize - tagLen;
+  if(audioLen <= 0) throw new Error('بخش صوتی فایل پیدا نشد');
+  const src = await FS.open(path, {read: true});
+  try{
+    let pos = tagLen, sent = false;
+    const stream = new ReadableStream({
+      async pull(c){
+        if(!sent){ sent = true; c.enqueue(newTag); return; }
+        const want = Math.min(1 << 20, oldSize - pos);
+        if(want <= 0){ c.close(); return; }
+        await src.seek(pos, FS.SeekMode.Start);
+        const buf = new Uint8Array(want); let got = 0;
+        while(got < want){ const n = await src.read(got ? buf.subarray(got) : buf); if(!n) break; got += n; }
+        if(!got){ c.error(new Error('خواندن فایل ناقص ماند')); return; }
+        pos += got; c.enqueue(buf.subarray(0, got));
+      }
+    });
+    await FS.writeFile(tmp, stream);
+  } catch(e){ try{ await FS.remove(tmp); }catch(_){} throw e; }
+  finally{ try{ await src.close(); }catch(e){} }
+  try{
+    // بررسی نتیجه پیش از جایگزینی
+    const newSize = (await FS.stat(tmp)).size;
+    if(newSize !== newTag.length + audioLen) throw new Error('حجم فایل جدید درست نیست');
+    const rd = await diskReader(tmp);
+    let tg; try{ tg = await readTags(rd); } finally{ try{ await rd.close(); }catch(e){} }
+    if((tg.title || '') !== (ch.title || '').trim() || (tg.artist || '') !== (ch.artist || '').trim() || (tg.album || '') !== (ch.album || '').trim()) throw new Error('نوشته‌های تگ با مقدار خواسته‌شده یکی نیست');
+    if(ch.cover && !(tg.cover && tg.cover.size === ch.cover.length)) throw new Error('عکس درست نوشته نشد');
+    const n = Math.min(65536, audioLen);
+    if(!sameBytes(await readAt(tmp, newTag.length, n), await readAt(path, tagLen, n))) throw new Error('ابتدای بخش صوتی تغییر کرده');
+    if(!sameBytes(await readAt(tmp, newSize - n, n), await readAt(path, oldSize - n, n))) throw new Error('انتهای بخش صوتی تغییر کرده');
+    await FS.rename(tmp, path);
+    t.size = newSize;
+  }catch(e){ try{ await FS.remove(tmp); }catch(_){} throw e; }
+}
+// فایلِ در حال پخش را برای مدتی آزاد می‌کند (ویندوز فایل باز را قفل می‌کند) و بعد دوباره بارگذاری می‌کند
+async function writeTagsSafely(t, ch){
+  const wasCur = S.curId === t.id, wasPlaying = wasCur && !audio.paused, at = wasCur ? audio.currentTime : 0;
+  if(wasCur){ audio.pause(); audio.removeAttribute('src'); try{ audio.load(); }catch(e){} await sleep(250); }
+  try{ await writeTagsToFile(t, ch); }
+  finally{
+    if(wasCur && S.curId === t.id && await loadUrl(fileUrl(t.file))){
+      applyFx(); try{ audio.currentTime = at; }catch(e){}
+      if(wasPlaying) audio.play().catch(() => {});
+    }
+  }
+}
+
 /* ---- edit track ---- */
 function openEdit(id){
   const t = S.tracks.get(id); if(!t) return;
   let newCover; // undefined = unchanged, null = removed, Blob = replaced
   let tmpUrl = null;
+  const canWrite = FOLDER && !!t.file && /\.mp3$/i.test(t.file);
   openModal('<h3>ویرایش آهنگ</h3><div class="edit-grid">' +
     '<div class="edit-cover"><div id="eCover"></div><div style="display:flex;gap:6px"><button class="btn sm" id="eChange">تغییر عکس</button><button class="btn sm" id="eRemove">حذف عکس</button></div><input type="file" id="eFile" accept="image/*" hidden></div>' +
     '<div class="edit-fields"><label>نام آهنگ<input class="inp" id="eTitle" dir="auto" maxlength="200"></label><label>خواننده<input class="inp" id="eArtist" dir="auto" maxlength="200"></label><label>آلبوم<input class="inp" id="eAlbum" dir="auto" maxlength="200"></label></div></div>' +
+    (canWrite ? '<label class="linkrow" style="margin-top:14px"><input type="checkbox" id="eWrite"><span><b>نوشتن تغییرات روی خود فایل MP3</b><br><span class="muted small">نام، خواننده، آلبوم و عکس داخل خود فایل هم ذخیره می‌شود تا در گوشی و برنامه‌های دیگر هم دیده شود. فایل اصلی تا لحظهٔ آخر دست‌نخورده می‌ماند و اگر خطایی پیش بیاید چیزی تغییر نمی‌کند.</span></span></label>' : '') +
     '<div class="actions"><button class="btn primary" id="eSave">ذخیره</button><button class="btn" data-close>انصراف</button></div>',
     (m, close) => {
       const q = s => m.querySelector(s);
+      if(canWrite) q('#eWrite').checked = store.get('mp_writetags', false);
       q('#eTitle').value = t.title; q('#eArtist').value = t.artist; q('#eAlbum').value = t.album;
       const hue = (t.id * 57) % 360;
       const showCover = () => {
         let url = null;
-        if(newCover === undefined) url = S.covers.get(id) || null;
+        if(newCover === undefined) url = coverUrl(id);
         else if(newCover) url = tmpUrl;
         q('#eCover').innerHTML = coverUrlHtml(url, hue, 'big');
       };
       showCover();
+      if(t.hasCover && !coverUrl(id)) ensureCover(id).then(() => { if(newCover === undefined) showCover(); });
       q('#eChange').onclick = () => q('#eFile').click();
       q('#eFile').onchange = e => {
         const f = e.target.files[0]; if(!f) return;
@@ -998,22 +1701,33 @@ function openEdit(id){
         try{
           if(newCover === null){
             await dbDel('covers', id);
-            if(S.covers.has(id)){ URL.revokeObjectURL(S.covers.get(id)); S.covers.delete(id); }
-            t.hasCover = false;
+            dropCoverUrl(id);
+            t.hasCover = false; BK.dirtyCovers.add(id);
           } else if(newCover){
             const blob = await resizeCover(newCover);
             await dbPut('covers', blob, id);
-            if(S.covers.has(id)) URL.revokeObjectURL(S.covers.get(id));
-            S.covers.set(id, URL.createObjectURL(blob));
-            t.hasCover = true;
+            putCoverUrl(id, blob);
+            t.hasCover = true; BK.dirtyCovers.add(id);
           }
           t.title = q('#eTitle').value.trim() || parseName(t.fileName || '').title || 'بدون نام';
           t.artist = q('#eArtist').value.trim();
           t.album = q('#eAlbum').value.trim();
           await dbPut('tracks', t);
+          const doWrite = canWrite && q('#eWrite').checked;
+          if(canWrite) store.set('mp_writetags', doWrite);
+          let fileCover;                                  // undefined = بدون تغییر
+          if(doWrite && newCover === null) fileCover = null;
+          else if(doWrite && newCover) fileCover = new Uint8Array(await (await resizeCover(newCover, 600)).arrayBuffer());
           close(); renderAll();
           if(S.curId === id) updateNowPlaying();
-          toast('ذخیره شد');
+          if(doWrite){
+            toast('در حال نوشتن روی فایل MP3…', true);
+            try{
+              await writeTagsSafely(t, {title: t.title, artist: t.artist, album: t.album, cover: fileCover});
+              await dbPut('tracks', t); updateStorage();
+              toast('ذخیره شد و روی خود فایل هم نوشته شد');
+            }catch(e){ console.error(e); toast('داخل برنامه ذخیره شد ولی نوشتن روی فایل انجام نشد (فایل دست‌نخورده ماند): ' + ((e && e.message) || e), false, 9000); }
+          } else toast('ذخیره شد');
         }catch(e){ console.error(e); toast('ذخیره نشد: ' + (e && e.message || 'خطا')); }
       };
     },
@@ -1083,7 +1797,7 @@ async function addFiles(files){
       };
       meta.id = await dbAddTrack(meta, f, cover);
       S.tracks.set(meta.id, meta);
-      if(cover) S.covers.set(meta.id, URL.createObjectURL(cover));
+      if(cover) putCoverUrl(meta.id, cover);
       ok++;
     }catch(e){
       console.error(e); fail++;
@@ -1098,24 +1812,25 @@ async function removeTrackRecord(id){
   for(const p of S.playlists){
     if(p.trackIds.includes(id)){ p.trackIds = p.trackIds.filter(x => x !== id); await dbPut('playlists', p); }
   }
-  if(S.covers.has(id)){ URL.revokeObjectURL(S.covers.get(id)); S.covers.delete(id); }
+  dropCoverUrl(id); BK.clean = true;
   S.tracks.delete(id);
   S.queue = S.queue.filter(x => x !== id);
+  S.upNext = S.upNext.filter(x => x !== id); syncQueueBadge(); refreshQueueModal();
   if(S.curId === id){ stopPlayback(); S.curId = null; S.qi = -1; audio.removeAttribute('src'); try{ audio.load(); }catch(e){} updateNowPlaying(); }
   else S.qi = S.queue.indexOf(S.curId);
 }
 async function deleteTrack(id){
   const t = S.tracks.get(id); if(!t) return;
   const msg = FOLDER
-    ? '«' + t.title + '» حذف شود؟ فایل آهنگ از پوشهٔ برنامه هم پاک می‌شود.'
+    ? '«' + t.title + '» حذف شود؟ فایل آهنگ به سطل بازیافت ویندوز منتقل می‌شود و از آنجا قابل برگرداندن است.'
     : '«' + t.title + '» از کتابخانه و همهٔ پلی‌لیست‌ها حذف شود؟';
   if(!await askConfirm(msg, 'حذف')) return;
   try{
     if(FOLDER && t.file){
       // ویندوز فایلِ در حال پخش را قفل می‌کند؛ اول آزادش کن
       if(S.curId === id){ stopPlayback(); audio.removeAttribute('src'); try{ audio.load(); }catch(e){} await sleep(200); }
-      try{ if(await FS.exists(fullPath(t.file))) await FS.remove(fullPath(t.file)); }
-      catch(e){ console.error(e); toast('فایل از پوشه پاک نشد (شاید در برنامهٔ دیگری باز است)', false, 6000); return; }
+      try{ if(await FS.exists(fullPath(t.file))) await TAURI.core.invoke('move_to_trash', {path: fullPath(t.file)}); }
+      catch(e){ console.error(e); toast('فایل به سطل بازیافت نرفت (شاید در برنامهٔ دیگری باز است): ' + ((e && e.message) || e), false, 7000); return; }
     }
     await removeTrackRecord(id);
     renderAll(); updateStorage();
@@ -1181,7 +1896,7 @@ async function importDiskFile(rel, fileObj){
   };
   meta.id = await dbAddTrack(meta, null, cover);
   S.tracks.set(meta.id, meta);
-  if(cover) S.covers.set(meta.id, URL.createObjectURL(cover));
+  if(cover){ putCoverUrl(meta.id, cover); BK.dirtyCovers.add(meta.id); }
   return true;
 }
 let scanning = false;
@@ -1265,7 +1980,7 @@ async function openMusicFolder(){
 /* ================= events ================= */
 document.addEventListener('click', e => {
   const nav = e.target.closest('#side .nav-item[data-view]');
-  if(nav){ setView(nav.dataset.view === 'all' ? 'all' : Number(nav.dataset.view)); }
+  if(nav){ const v = nav.dataset.view; setView(/^\d+$/.test(v) ? Number(v) : v); }
 });
 $('#btnNewPl').addEventListener('click', async () => {
   const name = await askText('نام پلی‌لیست جدید', '', 'ساخت');
@@ -1293,14 +2008,8 @@ $('#list').addEventListener('click', e => {
   const act = e.target.closest('[data-act]');
   if(act){
     const a = act.dataset.act;
-    if(a === 'edit') openEdit(id);
-    else if(a === 'addpl') openAddToPlaylist(id);
-    else if(a === 'del') deleteTrack(id);
-    else if(a === 'rmpl'){
-      const p = getPl(S.view); if(!p) return;
-      p.trackIds = p.trackIds.filter(x => x !== id);
-      dbPut('playlists', p).then(renderAll);
-    }
+    if(a === 'more'){ const r = act.getBoundingClientRect(); openMenu(id, r.left, r.bottom + 4); }
+    else rowAction(a, id);
     return;
   }
   if(id === S.curId && S.queue.length){ togglePlay(); return; }
@@ -1311,6 +2020,7 @@ $('#btnAdd').addEventListener('click', () => $('#fileIn').click());
 $('#btnRefresh').addEventListener('click', () => scanFolder(true));
 $('#btnOpenDir').addEventListener('click', openMusicFolder);
 $('#btnTheme').addEventListener('click', () => openTheme());
+$('#btnBackup').addEventListener('click', openBackup);
 $('#fileIn').addEventListener('change', e => { const f = e.target.files; if(f && f.length) addFiles(f); e.target.value = ''; });
 $('#q').addEventListener('input', e => { S.q = e.target.value; renderList(); });
 $('#sortSel').addEventListener('change', e => { S.sort = e.target.value; store.set('mp_sort', S.sort); renderList(); });
@@ -1488,13 +2198,15 @@ function openTheme(){
       await FS.mkdir(MUSIC_DIR, {recursive: true});
       audio.crossOrigin = 'anonymous';   // لازم برای افکت سرعت و پیچ روی آدرس asset
       FOLDER = true;
-      $('#btnRefresh').classList.remove('hidden'); $('#btnOpenDir').classList.remove('hidden');
+      DATA_DIR = base.replace(/[\\/]+$/, '') + SEP + 'data';
+      try{ await FS.mkdir(DATA_DIR + SEP + 'covers', {recursive: true}); }catch(e){ console.warn('data dir', e); }
+      $('#btnRefresh').classList.remove('hidden'); $('#btnOpenDir').classList.remove('hidden'); $('#btnBackup').classList.remove('hidden');
     }catch(e){ console.error(e); toast('ساخت پوشهٔ آهنگ‌ها ممکن نشد: ' + ((e && e.message) || e), false, 9000); }
   }
   document.querySelectorAll('[data-icon]').forEach(n => { n.innerHTML = icon(n.dataset.icon, n.classList.contains('fillicon') ? 'fill' : ''); });
   S.sort = store.get('mp_sort', 'new'); $('#sortSel').value = S.sort;
   const v = store.get('mp_vol', 0.8); audio.volume = v; volEl.value = v;
-  syncVolIcon(); syncModes(); syncFxUI(); syncPlayBtn(); applyFx();
+  syncVolIcon(); syncModes(); syncFxUI(); syncPlayBtn(); drawEq(); updSleepUI(); syncQueueBadge(); applyFx();
   if('mediaSession' in navigator){
     try{
       navigator.mediaSession.setActionHandler('play', () => { ensureGraph(); audio.play(); });
@@ -1514,15 +2226,47 @@ function openTheme(){
     const [tracks, pls] = await Promise.all([dbGetAll('tracks'), dbGetAll('playlists')]);
     tracks.forEach(t => S.tracks.set(t.id, t));
     S.playlists = pls;
-    await Promise.all(tracks.filter(t => t.hasCover).map(async t => {
-      const b = await dbGet('covers', t.id);
-      if(b) S.covers.set(t.id, URL.createObjectURL(b));
-    }));
   }catch(e){ console.error(e); toast('خواندن کتابخانه با مشکل روبه‌رو شد'); }
+  // داده‌های برنامه خالی است ولی پشتیبان هست؟ بعد از خواندن پوشه، پشتیبان روی آهنگ‌ها اعمال می‌شود
+  let lib = null;
+  if(FOLDER && !S.tracks.size && !S.playlists.length) lib = await loadLibraryFile();
+  BK.hold = !!(lib && (lib.error || (lib.tracks && lib.tracks.length)));
   updateNowPlaying();
   renderAll(); updateStorage();
-  if(FOLDER) scanFolder(false);   // آهنگ‌هایی که دستی در پوشه گذاشته‌ای
+  if(FOLDER){
+    await restoreResume();
+    await scanFolder(false);   // آهنگ‌هایی که دستی در پوشه گذاشته‌ای
+    if(lib && !lib.error){
+      try{
+        const r = await applyLibrary(lib, {settings: true});
+        renderAll(); updateNowPlaying();
+        toast('پشتیبان بازیابی شد: ' + r.tracks + ' آهنگ و ' + r.playlists + ' پلی‌لیست', false, 6000);
+      }catch(e){ console.error(e); toast('بازیابی پشتیبان ناموفق بود'); }
+    } else if(lib && lib.error) toast('فایل پشتیبان خراب بود و نادیده گرفته شد؛ نسخهٔ قبلی کنارش به نام library.prev.json می‌ماند', false, 8000);
+    BK.ready = true;
+    let has = true; try{ has = await FS.exists(libPath()); }catch(e){}
+    if(BK.dirty || !has) scheduleBackup();
+  }
 })();
+
+/* ---------- ادامهٔ پخش از جایی که بسته شد (بدون پخش خودکار) ---------- */
+async function restoreResume(){
+  const r = store.get('mp_resume', null);
+  if(!FOLDER || !r || !r.file) return;
+  const t = [...S.tracks.values()].find(x => x.file === r.file); if(!t) return;
+  S.queue = viewIds(); S.qi = S.queue.indexOf(t.id); S.curId = t.id;
+  updateNowPlaying();
+  const ok = await loadUrl(fileUrl(t.file));
+  if(S.curId !== t.id) return;
+  if(!ok){ S.curId = null; S.qi = -1; S.queue = []; updateNowPlaying(); return; }
+  applyFx();
+  const d = curDur();
+  if(r.t > 1 && (!d || r.t < d - 3)) audio.currentTime = r.t;
+  $('#tDur').textContent = fmt(d); $('#tCur').textContent = fmt(audio.currentTime);
+  $('#seek').value = d ? Math.min(1000, audio.currentTime / d * 1000) : 0;
+}
+window.addEventListener('pagehide', saveResume);
+document.addEventListener('visibilitychange', () => { if(document.hidden) saveResume(); });
 </script>
 </body>
 </html>
