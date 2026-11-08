@@ -11,7 +11,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "موزیک پلیر من",
+        "title": "My Music Player",
         "width": 1200,
         "height": 760,
         "minWidth": 900,

@@ -1,15 +1,15 @@
 <!DOCTYPE html>
-<html lang="fa" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>موزیک پلیر من</title>
+<title>My Music Player</title>
 <style>
 :root{
-  /* رنگ‌های اصلی؛ از بخش «ظاهر و رنگ‌ها» تغییر می‌کنند */
+  /* main colors; changed from the “Appearance” panel */
   --bg:#0e1014; --panel:#161920; --text:#e9ebf1; --accent:#7c5cff; --playbtn:#ffffff;
   --on-accent:#ffffff; --on-play:#111111;
-  /* بقیه از روی رنگ‌های بالا ساخته می‌شوند */
+  /* the rest are derived from the colors above */
   --panel2:color-mix(in srgb, var(--panel) 90%, var(--text));
   --line:color-mix(in srgb, var(--panel) 82%, var(--text));
   --muted:color-mix(in srgb, var(--text) 58%, var(--bg));
@@ -34,10 +34,10 @@ svg.i.fill{fill:currentColor}
 #app{display:grid;grid-template-columns:250px minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;height:100vh}
 
 /* ---- sidebar ---- */
-#side{background:var(--panel);border-left:1px solid var(--line);padding:16px 12px;overflow:auto;display:flex;flex-direction:column;gap:4px}
+#side{background:var(--panel);border-right:1px solid var(--line);padding:16px 12px;overflow:auto;display:flex;flex-direction:column;gap:4px}
 .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;padding:4px 8px 14px}
 .brand .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;color:var(--on-accent)}
-.nav-item{display:flex;align-items:center;gap:10px;width:100%;text-align:right;padding:9px 10px;border-radius:10px;color:var(--text)}
+.nav-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:9px 10px;border-radius:10px;color:var(--text)}
 .nav-item:hover{background:var(--panel2)}
 .nav-item.active{background:var(--accent-soft);color:var(--text)}
 .nav-item .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -94,7 +94,7 @@ select.sel{background:var(--panel2);border:1px solid var(--line);border-radius:1
 .ib.fav.on{color:var(--accent2)}
 .ib.fav.on svg.i{fill:currentColor}
 .c-act button.on svg.i{fill:currentColor}
-.c-main .t,.c-main .a,.c-album{text-align:right}
+.c-main .t,.c-main .a,.c-album{text-align:left}
 .c-main .a,.c-album{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
 .c-dur{color:var(--muted);font-size:13px;direction:ltr;text-align:center}
 .c-act{display:flex;gap:2px;justify-content:flex-end;opacity:.0;transition:opacity .12s}
@@ -131,11 +131,11 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
 .right{display:flex;gap:4px;align-items:center;justify-content:flex-end;direction:ltr;flex-wrap:wrap}
 .right .fxbtn{flex:none;margin-inline-end:6px}
 .right input[type=range]{width:84px}
-.fxbtn{display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:10px;background:var(--panel2);border:1px solid var(--line);direction:rtl;font-size:13px;white-space:nowrap}
+.fxbtn{display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:10px;background:var(--panel2);border:1px solid var(--line);font-size:13px;white-space:nowrap}
 .fxbtn:hover{border-color:var(--accent2)}
 .fxbtn.on{border-color:var(--accent);color:var(--accent2)}
 
-#fx{position:absolute;bottom:calc(100% + 8px);left:16px;width:360px;max-width:calc(100vw - 32px);background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 18px 50px rgba(0,0,0,.55);z-index:30;direction:rtl}
+#fx{position:absolute;bottom:calc(100% + 8px);right:16px;width:360px;max-width:calc(100vw - 32px);background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 18px 50px rgba(0,0,0,.55);z-index:30}
 #fx h4{margin:0 0 12px;font-size:15px;display:flex;justify-content:space-between;align-items:center}
 .fxrow{margin-bottom:14px}
 .fxrow .lab{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
@@ -149,17 +149,17 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
 .hint{color:var(--muted);font-size:12px;line-height:1.8;margin-top:10px}
 
 /* ---- popups: eq, sleep ---- */
-.pop{position:absolute;bottom:calc(100% + 8px);left:16px;width:360px;max-width:calc(100vw - 32px);background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 18px 50px rgba(0,0,0,.55);z-index:30;direction:rtl}
+.pop{position:absolute;bottom:calc(100% + 8px);right:16px;width:360px;max-width:calc(100vw - 32px);background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 18px 50px rgba(0,0,0,.55);z-index:30}
 .pop h4{margin:0 0 12px;font-size:15px;display:flex;justify-content:space-between;align-items:center}
 .eqbands{display:flex;justify-content:space-between;direction:ltr;margin:6px 0 12px}
 .eqb{display:flex;flex-direction:column;align-items:center;gap:6px;width:20%}
 .eqb input[type=range]{writing-mode:vertical-lr;direction:rtl;width:26px;height:130px;margin:0}
 .eqb .g{font-size:11px;color:var(--accent2);font-variant-numeric:tabular-nums;direction:ltr}
 .eqb .f{font-size:11px;color:var(--muted);direction:ltr}
-.ib .tbadge{position:absolute;top:-3px;inset-inline-start:-4px;font-size:9px;font-weight:700;background:var(--accent);color:var(--on-accent);border-radius:8px;padding:0 4px;line-height:14px;direction:ltr}
+.ib .tbadge{position:absolute;top:-3px;inset-inline-end:-4px;font-size:9px;font-weight:700;background:var(--accent);color:var(--on-accent);border-radius:8px;padding:0 4px;line-height:14px;direction:ltr}
 .ib.sm{width:34px;height:34px}
 #ctx{position:fixed;z-index:60;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px;min-width:200px;box-shadow:0 14px 40px rgba(0,0,0,.5)}
-#ctx button{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border-radius:8px;text-align:right}
+#ctx button{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border-radius:8px;text-align:left}
 #ctx button:hover{background:var(--panel2)}
 #ctx button.danger{color:var(--danger)}
 #ctx .sep{height:1px;background:var(--line);margin:4px 0}
@@ -224,7 +224,7 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
 @media (max-width:1100px){ .fxbtn:not(.on) #fxLabel{display:none} }
 @media (max-width:860px){
   #app{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr) auto}
-  #side{flex-direction:row;align-items:center;overflow-x:auto;border-left:0;border-bottom:1px solid var(--line);padding:8px}
+  #side{flex-direction:row;align-items:center;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);padding:8px}
   #side .brand,#side .nav-head,#side .side-foot{display:none}
   #side nav,#plList{display:flex;gap:4px}
   .nav-item{width:auto;white-space:nowrap}
@@ -233,100 +233,100 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
   .c-act{opacity:1}
   #player{grid-template-columns:1fr;gap:8px}
   .right{justify-content:space-between}
-  #fx,.pop{left:8px}
+  #fx,.pop{right:8px}
 }
 </style>
 </head>
 <body>
 <div id="app">
   <aside id="side">
-    <div class="brand"><span class="logo" data-icon="music"></span> موزیک پلیر من</div>
+    <div class="brand"><span class="logo" data-icon="music"></span> My Music Player</div>
     <nav>
-      <button class="nav-item" data-view="all"><span data-icon="music"></span><span class="nm">همه آهنگ‌ها</span><span class="count" id="cAll">0</span></button>
-      <button class="nav-item" data-view="fav"><span data-icon="heart"></span><span class="nm">علاقه‌مندی‌ها</span><span class="count" id="cFav">0</span></button>
-      <button class="nav-item" data-view="recent"><span data-icon="clock"></span><span class="nm">اخیراً پخش‌شده</span></button>
-      <div class="nav-head"><span>پلی‌لیست‌ها</span><button id="btnNewPl" title="پلی‌لیست جدید" data-icon="plus"></button></div>
+      <button class="nav-item" data-view="all"><span data-icon="music"></span><span class="nm">All songs</span><span class="count" id="cAll">0</span></button>
+      <button class="nav-item" data-view="fav"><span data-icon="heart"></span><span class="nm">Favorites</span><span class="count" id="cFav">0</span></button>
+      <button class="nav-item" data-view="recent"><span data-icon="clock"></span><span class="nm">Recently played</span></button>
+      <div class="nav-head"><span>Playlists</span><button id="btnNewPl" title="New playlist" data-icon="plus"></button></div>
       <div id="plList"></div>
     </nav>
-    <button class="nav-item hidden" id="btnBackup"><span data-icon="shield"></span><span class="nm">پشتیبان‌گیری</span></button>
-    <button class="nav-item" id="btnTheme"><span data-icon="palette"></span><span class="nm">ظاهر و رنگ‌ها</span></button>
+    <button class="nav-item hidden" id="btnBackup"><span data-icon="shield"></span><span class="nm">Backup</span></button>
+    <button class="nav-item" id="btnTheme"><span data-icon="palette"></span><span class="nm">Appearance</span></button>
     <div class="side-foot" id="storageInfo"></div>
-    <div class="app-info hidden" id="appInfo"><span>نسخه <b id="appVer" dir="ltr">—</b></span><button class="btn sm" id="btnChkUpd">بررسی آپدیت</button></div>
+    <div class="app-info hidden" id="appInfo"><span>Version <b id="appVer" dir="ltr">—</b></span><button class="btn sm" id="btnChkUpd">Check for updates</button></div>
   </aside>
 
   <main id="main">
     <div id="updBar" class="upd hidden"></div>
     <header class="top">
       <div>
-        <h1 id="viewTitle">همه آهنگ‌ها</h1>
+        <h1 id="viewTitle">All songs</h1>
         <div id="viewSub" class="muted small"></div>
       </div>
       <div class="top-actions">
-        <label class="search"><span data-icon="search"></span><input id="q" type="search" dir="auto" placeholder="جستجوی آهنگ، خواننده، آلبوم…"></label>
-        <select id="sortSel" class="sel" title="مرتب‌سازی">
-          <option value="new">جدیدترین</option>
-          <option value="title">نام آهنگ</option>
-          <option value="artist">خواننده</option>
-          <option value="album">آلبوم</option>
-          <option value="plays">بیشترین پخش</option>
+        <label class="search"><span data-icon="search"></span><input id="q" type="search" dir="auto" placeholder="Search songs, artists…"></label>
+        <select id="sortSel" class="sel" title="Sort">
+          <option value="new">Newest</option>
+          <option value="title">Title</option>
+          <option value="artist">Artist</option>
+          <option value="album">Album</option>
+          <option value="plays">Most played</option>
         </select>
         <span id="plActions" class="top-actions"></span>
-        <button class="btn" id="btnPlayAll"><span data-icon="play" class="fillicon"></span> پخش همه</button>
-        <button class="btn hidden" id="btnRefresh" title="پوشهٔ آهنگ‌ها را دوباره بررسی کن و آهنگ‌های تازه را اضافه کن"><span data-icon="refresh"></span> رفرش پوشه</button>
-        <button class="btn hidden" id="btnOpenDir" title="باز کردن پوشهٔ آهنگ‌ها در Explorer"><span data-icon="folder"></span> باز کردن پوشه</button>
-        <button class="btn primary" id="btnAdd"><span data-icon="plus"></span> افزودن آهنگ</button>
+        <button class="btn" id="btnPlayAll"><span data-icon="play" class="fillicon"></span> Play all</button>
+        <button class="btn hidden" id="btnRefresh" title="Rescan the music folder and add new songs"><span data-icon="refresh"></span> Refresh folder</button>
+        <button class="btn hidden" id="btnOpenDir" title="Open the music folder in Explorer"><span data-icon="folder"></span> Open folder</button>
+        <button class="btn primary" id="btnAdd"><span data-icon="plus"></span> Add songs</button>
         <input type="file" id="fileIn" accept="audio/*,.mp3,.m4a,.flac,.wav,.ogg,.oga,.opus,.aac,.webm" multiple hidden>
       </div>
     </header>
     <section id="list" class="list"></section>
-    <div class="drop-overlay" id="drop">فایل‌های موزیک را رها کنید</div>
+    <div class="drop-overlay" id="drop">Drop music files here</div>
   </main>
 
   <footer id="player">
     <div class="np">
       <div id="npCover"></div>
       <div class="meta"><div id="npTitle" dir="auto"></div><div id="npArtist" dir="auto"></div></div>
-      <button class="ib fav" id="npFav" title="علاقه‌مندی" data-icon="heart"></button>
+      <button class="ib fav" id="npFav" title="Favorite" data-icon="heart"></button>
     </div>
     <div class="center">
       <div class="ctrls">
-        <button class="ib" id="btnShuffle" title="پخش تصادفی" data-icon="shuffle"></button>
-        <button class="ib" id="btnPrev" title="قبلی" data-icon="prev"></button>
-        <button class="ib play" id="btnPlay" title="پخش / توقف"></button>
-        <button class="ib" id="btnNext" title="بعدی" data-icon="next"></button>
-        <button class="ib" id="btnRepeat" title="تکرار"><span data-icon="repeat"></span><span class="badge" id="repBadge"></span></button>
+        <button class="ib" id="btnShuffle" title="Shuffle" data-icon="shuffle"></button>
+        <button class="ib" id="btnPrev" title="Previous" data-icon="prev"></button>
+        <button class="ib play" id="btnPlay" title="Play / Pause"></button>
+        <button class="ib" id="btnNext" title="Next" data-icon="next"></button>
+        <button class="ib" id="btnRepeat" title="Repeat"><span data-icon="repeat"></span><span class="badge" id="repBadge"></span></button>
       </div>
       <div class="seek"><span id="tCur">0:00</span><input type="range" id="seek" min="0" max="1000" value="0"><span id="tDur">0:00</span></div>
     </div>
     <div class="right">
-      <button class="fxbtn" id="btnFx"><span data-icon="sliders"></span><span id="fxLabel">سرعت و پیچ</span></button>
-      <button class="ib sm" id="btnEq" title="اکولایزر" data-icon="eq"></button>
-      <button class="ib sm" id="btnSleep" title="تایمر خواب"><span data-icon="moon"></span><span class="tbadge hidden" id="sleepBadge"></span></button>
-      <button class="ib sm" id="btnQueue" title="صف پخش"><span data-icon="queue"></span><span class="tbadge hidden" id="qBadge"></span></button>
-      <button class="ib sm" id="btnMute" title="بی‌صدا"></button>
+      <button class="fxbtn" id="btnFx"><span data-icon="sliders"></span><span id="fxLabel">Speed and pitch</span></button>
+      <button class="ib sm" id="btnEq" title="Equalizer" data-icon="eq"></button>
+      <button class="ib sm" id="btnSleep" title="Sleep timer"><span data-icon="moon"></span><span class="tbadge hidden" id="sleepBadge"></span></button>
+      <button class="ib sm" id="btnQueue" title="Play queue"><span data-icon="queue"></span><span class="tbadge hidden" id="qBadge"></span></button>
+      <button class="ib sm" id="btnMute" title="Mute"></button>
       <input type="range" id="vol" min="0" max="1" step="0.01" value="0.8">
     </div>
 
     <div id="eqPop" class="pop hidden">
-      <h4><span>اکولایزر</span><button class="ib" id="eqClose" data-icon="x" style="width:30px;height:30px"></button></h4>
+      <h4><span>Equalizer</span><button class="ib" id="eqClose" data-icon="x" style="width:30px;height:30px"></button></h4>
       <div class="eqbands" id="eqBands"></div>
       <div class="chips" id="eqPresets"></div>
-      <div class="hint">با تغییر هر باند اکولایزر خودکار روشن می‌شود. وقتی همهٔ باندها صفر باشند خاموش است و پردازشی انجام نمی‌شود.</div>
+      <div class="hint">Moving any band turns the equalizer on automatically. When all bands are at zero it is off and uses no processing.</div>
     </div>
     <div id="sleepPop" class="pop hidden">
-      <h4><span>تایمر خواب</span><button class="ib" id="sleepClose" data-icon="x" style="width:30px;height:30px"></button></h4>
+      <h4><span>Sleep timer</span><button class="ib" id="sleepClose" data-icon="x" style="width:30px;height:30px"></button></h4>
       <div class="hint" style="margin:0 0 10px" id="sleepStatus"></div>
       <div class="chips" id="sleepChips">
-        <button class="chip" data-min="15">۱۵ دقیقه</button><button class="chip" data-min="30">۳۰ دقیقه</button><button class="chip" data-min="45">۴۵ دقیقه</button>
-        <button class="chip" data-min="60">۱ ساعت</button><button class="chip" data-min="90">۱.۵ ساعت</button><button class="chip" data-min="eot">پایان آهنگ فعلی</button>
+        <button class="chip" data-min="15">15 min</button><button class="chip" data-min="30">30 min</button><button class="chip" data-min="45">45 min</button>
+        <button class="chip" data-min="60">1 hour</button><button class="chip" data-min="90">1.5 hours</button><button class="chip" data-min="eot">End of this song</button>
       </div>
-      <div style="margin-top:12px"><button class="btn sm hidden" id="sleepCancel">لغو تایمر</button></div>
-      <div class="hint">چند ثانیهٔ آخر صدا آرام کم می‌شود و بعد پخش متوقف می‌شود.</div>
+      <div style="margin-top:12px"><button class="btn sm hidden" id="sleepCancel">Cancel timer</button></div>
+      <div class="hint">The volume fades out over the last few seconds, then playback stops.</div>
     </div>
     <div id="fx" class="hidden">
-      <h4><span>سرعت و پیچ</span><button class="ib" id="fxClose" data-icon="x" style="width:30px;height:30px"></button></h4>
+      <h4><span>Speed and pitch</span><button class="ib" id="fxClose" data-icon="x" style="width:30px;height:30px"></button></h4>
       <div class="fxrow">
-        <div class="lab"><span>سرعت پخش</span><span class="val" id="vSpeed">1.00×</span></div>
+        <div class="lab"><span>Playback speed</span><span class="val" id="vSpeed">1.00×</span></div>
         <input type="range" id="fxSpeed" min="0.5" max="2" step="0.05" value="1">
         <div class="chips" style="margin-top:8px">
           <button class="chip" data-speed="0.75">0.75×</button>
@@ -336,7 +336,7 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
         </div>
       </div>
       <div class="fxrow">
-        <div class="lab"><span>پیچ (Pitch)</span><span class="val" id="vPitch">0</span></div>
+        <div class="lab"><span>Pitch</span><span class="val" id="vPitch">0</span></div>
         <input type="range" id="fxPitch" min="-12" max="12" step="0.5" value="0">
         <div class="chips" style="margin-top:8px">
           <button class="chip" data-pitch="-2">−2</button>
@@ -348,10 +348,10 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
       </div>
       <label class="linkrow">
         <input type="checkbox" id="fxLink">
-        <span><b>پیچ همراه سرعت تغییر کند</b><br><span class="muted small">مثل صفحهٔ گرامافون: سرعت بالا = صدای نازک‌تر (نایت‌کور)، سرعت پایین = صدای بم‌تر (اسلوود).</span></span>
+        <span><b>Change pitch together with speed</b><br><span class="muted small">Like a vinyl record: faster = higher voice (nightcore), slower = deeper voice (slowed).</span></span>
       </label>
       <div class="chips" style="margin-top:12px">
-        <button class="chip" data-preset="original">اصلی</button>
+        <button class="chip" data-preset="original">Original</button>
         <button class="chip" data-preset="slowed">Slowed</button>
         <button class="chip" data-preset="nightcore">Nightcore</button>
       </div>
@@ -366,12 +366,13 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
 
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
-/* داخل برنامهٔ ویندوز (Tauri) آهنگ‌ها در پوشه ذخیره می‌شوند؛ در مرورگر داخل IndexedDB */
+/* In the Windows app (Tauri) songs are stored in a folder; in a browser they go into IndexedDB */
 const TAURI = window.__TAURI__;
 const IS_APP = !!(TAURI && TAURI.updater);
 const FS = (TAURI && TAURI.fs && TAURI.path && TAURI.core) ? TAURI.fs : null;
 const AUDIO_RE = /\.(mp3|m4a|flac|wav|ogg|oga|opus|aac|webm|wma)$/i;
 let FOLDER = false, MUSIC_DIR = '', DATA_DIR = '', SEP = '\\';
+const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const fullPath = rel => MUSIC_DIR + SEP + rel.split('/').join(SEP);
 const dataPath = (...p) => DATA_DIR + SEP + p.join(SEP);
@@ -477,11 +478,11 @@ function dbAddTrack(meta, audioBlob, coverBlob){
   });
 }
 
-/* ================= اکولایزر: تنظیمات پایه ================= */
+/* ================= Equalizer: base settings ================= */
 const EQ_FREQ = [60, 230, 910, 3600, 14000];
 const EQ_PRESETS = [
-  ['صاف', [0, 0, 0, 0, 0]], ['بیس قوی', [7, 5, 1, 0, 0]], ['صدای زیر', [0, 0, 0, 4, 6]],
-  ['وکال', [-2, -1, 3, 4, 1]], ['راک', [5, 3, -2, 3, 5]], ['پاپ', [-1, 2, 4, 2, -1]]
+  ['Flat', [0, 0, 0, 0, 0]], ['Bass boost', [7, 5, 1, 0, 0]], ['Treble boost', [0, 0, 0, 4, 6]],
+  ['Vocal', [-2, -1, 3, 4, 1]], ['Rock', [5, 3, -2, 3, 5]], ['Pop', [-1, 2, 4, 2, -1]]
 ];
 function loadEq(){
   const v = store.get('mp_eq', null);
@@ -491,9 +492,9 @@ function loadEq(){
 }
 const eqActive = () => S.eq.g.some(x => Math.abs(x) > 0.05);
 
-/* ================= پشتیبان (library.json) =================
-   نام‌ها، خواننده‌ها، آلبوم‌ها، عکس‌ها، پلی‌لیست‌ها، علاقه‌مندی‌ها و تنظیمات کنار پوشهٔ آهنگ‌ها ذخیره می‌شوند
-   تا اگر داده‌های برنامه پاک شد، خودکار برگردند. کلید هر آهنگ مسیر فایل آن است. */
+/* ================= Backup (library.json) =================
+   Names, artists, albums, covers, playlists, favorites and settings are saved next to the music folder
+   so they come back automatically if the app data is wiped. Each song is keyed by its file path. */
 const BK = {hold:false, ready:false, timer:null, dirty:false, saving:false, covers:new Set(), dirtyCovers:new Set(), clean:false, first:true, last:0, failed:false};
 const BK_KEYS = ['mp_theme', 'mp_fx', 'mp_sort', 'mp_vol', 'mp_shuffle', 'mp_repeat', 'mp_eq'];
 function hash32(s, seed){ let h = seed >>> 0; for(let i = 0; i < s.length; i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h.toString(16).padStart(8, '0'); }
@@ -507,7 +508,7 @@ function scheduleBackup(){
 }
 async function saveBackup(){
   if(!FOLDER || !BK.ready) return false;
-  if(BK.hold){ if(!S.tracks.size) return false; BK.hold = false; }   // پشتیبان موجود را با وضعیت خالی بازنویسی نکن
+  if(BK.hold){ if(!S.tracks.size) return false; BK.hold = false; }   // do not overwrite an existing backup with an empty state
   if(BK.saving){ BK.dirty = true; return false; }
   BK.saving = true; BK.dirty = false;
   try{
@@ -545,7 +546,7 @@ async function saveBackup(){
       BK.clean = false;
       try{ for(const e of await FS.readDir(dataPath('covers'))){ if(e.isFile && !keep.has(e.name)){ await FS.remove(dataPath('covers', e.name)); BK.covers.delete(e.name); } } }catch(e){}
     }
-    // اولین ذخیره در هر اجرا: نسخهٔ قبلی را نگه دار تا اگر وضعیت خالی/خراب بود چیزی گم نشود
+    // first save of each run: keep the previous copy so nothing is lost if the state was empty/corrupt
     if(BK.first){
       BK.first = false;
       try{ if(await FS.exists(libPath())) await FS.copyFile(libPath(), dataPath('library.prev.json')); }catch(e){}
@@ -557,7 +558,7 @@ async function saveBackup(){
     return true;
   }catch(e){
     console.warn('backup failed', e);
-    if(!BK.failed) toast('ذخیرهٔ پشتیبان انجام نشد: ' + ((e && e.message) || e), false, 5000);
+    if(!BK.failed) toast('Backup failed: ' + ((e && e.message) || e), false, 5000);
     BK.failed = true; BK.dirty = true;
     clearTimeout(BK.timer); BK.timer = setTimeout(saveBackup, 30000);
     return false;
@@ -574,7 +575,7 @@ async function loadLibraryFile(){
     return lib;
   }catch(e){ console.warn('library.json unreadable', e); return {error:true}; }
 }
-// فایل‌های پوشه باید قبلاً وارد کتابخانه شده باشند؛ اطلاعات پشتیبان روی آن‌ها اعمال می‌شود
+// the folder's files must already be in the library; backup info is applied on top of them
 async function applyLibrary(lib, opt){
   opt = opt || {};
   const byFile = new Map([...S.tracks.values()].filter(t => t.file).map(t => [t.file, t]));
@@ -615,33 +616,33 @@ async function applyLibrary(lib, opt){
   return {tracks:n, playlists:pl};
 }
 function openBackup(){
-  openModal('<h3>پشتیبان‌گیری از کتابخانه</h3>' +
-    '<div class="hint" style="margin:0 0 10px">نام، خواننده، آلبوم، عکس، پلی‌لیست‌ها، علاقه‌مندی‌ها و تنظیمات خودکار در فایل <span dir="ltr">library.json</span> کنار پوشهٔ آهنگ‌ها ذخیره می‌شوند. اگر داده‌های برنامه پاک شود، با باز شدن برنامه خودکار برمی‌گردند.</div>' +
+  openModal('<h3>Library backup</h3>' +
+    '<div class="hint" style="margin:0 0 10px">Song names, artists, albums, covers, playlists, favorites and settings are saved automatically to <span dir="ltr">library.json</span> next to the music folder. If the app data is ever wiped, they come back automatically when the app starts.</div>' +
     '<div class="bk-info" id="bkInfo">…</div><span class="path" id="bkPath"></span>' +
-    '<div class="actions" style="flex-wrap:wrap"><button class="btn primary" id="bkSave">ذخیرهٔ پشتیبان همین حالا</button><button class="btn" id="bkRestore">بازیابی از پشتیبان</button><button class="btn" id="bkOpen">باز کردن پوشه</button><button class="btn" data-close>بستن</button></div>',
+    '<div class="actions" style="flex-wrap:wrap"><button class="btn primary" id="bkSave">Save backup now</button><button class="btn" id="bkRestore">Restore from backup</button><button class="btn" id="bkOpen">Open folder</button><button class="btn" data-close>Close</button></div>',
     m => {
       const q = s => m.querySelector(s);
       q('#bkPath').textContent = DATA_DIR;
       const info = async () => {
         try{
           const st = await FS.stat(libPath());
-          q('#bkInfo').innerHTML = 'آخرین پشتیبان: <b>' + esc(new Date(st.mtime).toLocaleString('fa-IR')) + '</b><br>حجم: ' + Math.max(1, Math.round(st.size / 1024)) + ' کیلوبایت · ' + S.tracks.size + ' آهنگ · ' + S.playlists.length + ' پلی‌لیست';
-        }catch(e){ q('#bkInfo').textContent = 'هنوز پشتیبانی ذخیره نشده است.'; }
+          q('#bkInfo').innerHTML = 'Last backup: <b>' + esc(new Date(st.mtime).toLocaleString('en-US')) + '</b><br>Size: ' + Math.max(1, Math.round(st.size / 1024)) + ' KB · ' + S.tracks.size + ' songs · ' + S.playlists.length + ' playlists';
+        }catch(e){ q('#bkInfo').textContent = 'No backup saved yet.'; }
       };
       info();
-      q('#bkSave').onclick = async () => { clearTimeout(BK.timer); const ok = await saveBackup(); toast(ok ? 'پشتیبان ذخیره شد' : 'ذخیره نشد'); info(); };
-      q('#bkOpen').onclick = async () => { try{ await TAURI.opener.openPath(DATA_DIR); }catch(e){ toast('باز کردن پوشه ممکن نشد. مسیر: ' + DATA_DIR, false, 8000); } };
+      q('#bkSave').onclick = async () => { clearTimeout(BK.timer); const ok = await saveBackup(); toast(ok ? 'Backup saved' : 'Not saved'); info(); };
+      q('#bkOpen').onclick = async () => { try{ await TAURI.opener.openPath(DATA_DIR); }catch(e){ toast('Couldn\'t open the folder. Path: ' + DATA_DIR, false, 8000); } };
       q('#bkRestore').onclick = async () => {
         const lib = await loadLibraryFile();
-        if(!lib){ toast('فایل پشتیبانی پیدا نشد'); return; }
-        if(lib.error){ toast('فایل پشتیبان خراب است'); return; }
-        if(!await askConfirm('نام‌ها، پلی‌لیست‌ها، علاقه‌مندی‌ها و تنظیمات فعلی با پشتیبان جایگزین شوند؟', 'بازیابی')) return;
+        if(!lib){ toast('No backup file found'); return; }
+        if(lib.error){ toast('The backup file is corrupted'); return; }
+        if(!await askConfirm('Replace current names, playlists, favorites and settings with the backup?', 'Restore')) return;
         try{
           const r = await applyLibrary(lib, {replacePlaylists:true, settings:true});
           renderAll(); updateNowPlaying();
-          toast('بازیابی شد: ' + r.tracks + ' آهنگ و ' + r.playlists + ' پلی‌لیست');
+          toast('Restored: ' + r.tracks + ' songs and ' + r.playlists + ' playlists');
           info();
-        }catch(e){ console.error(e); toast('بازیابی ناموفق بود'); }
+        }catch(e){ console.error(e); toast('Restore failed'); }
       };
     });
 }
@@ -684,7 +685,7 @@ function parseApic(b){
   if(data.length < 100) return null;
   return new Blob([data], {type: data[0] === 0x89 ? 'image/png' : 'image/jpeg'});
 }
-// src: یک File، یا {rangeReader(start, len)} برای خواندن بخشی از فایل روی دیسک
+// src: a File, or {rangeReader(start, len)} to read part of a file on disk
 async function readTags(src){
   const out = {};
   const rd = src.rangeReader || (async (s, l) => new Uint8Array(await src.slice(s, s + l).arrayBuffer()));
@@ -720,13 +721,13 @@ async function readTags(src){
 }
 function parseName(name){
   let base = name.replace(/\.[^.]+$/, '').replace(/_/g, ' ').trim();
-  // شمارهٔ ترک اول نام ("09. " یا "09 - ") جزو نام خواننده/آهنگ نیست
+  // a leading track number ("09. " or "09 - ") is not part of the artist/song name
   const noNum = base.replace(/^\d{1,3}\s*[.)\-]\s*/, '').trim();
   if(noNum) base = noNum;
   const m = base.match(/^(.+?)\s+-\s+(.+)$/);
   return m ? {artist: m[1].trim(), title: m[2].trim()} : {artist: '', title: base};
 }
-// src: File یا آدرس (رشته)
+// src: a File or a URL (string)
 function getDuration(src){
   return new Promise(res => {
     const a = new Audio(); a.preload = 'metadata';
@@ -800,8 +801,8 @@ class Jungle{
 }
 
 /* ================= audio engine =================
-   AudioContext فقط وقتی ساخته می‌شود که واقعاً لازم باشد (پیچ ≠ ۰ یا اکولایزر روشن).
-   بدون آن، صدا مستقیم و بدون پردازش پخش می‌شود و مصرف پردازنده کمترین است. */
+   The AudioContext is only created when really needed (pitch ≠ 0 or the equalizer is on).
+   Without it, audio plays directly with no processing, which keeps CPU use lowest. */
 const audio = new Audio();
 audio.preload = 'auto';
 let ctx = null, G = null, curUrl = null, idleT = null;
@@ -832,13 +833,13 @@ function ensureGraph(){
   clearTimeout(idleT);
   if(ctx.state === 'suspended') ctx.resume().catch(() => {});
 }
-// مسیر صدا: منبع ← (اکولایزر) ← (پیچ‌شیفتر) ← خروجی. بخش‌های خاموش اصلاً به مسیر وصل نمی‌شوند.
+// audio path: source → (equalizer) → (pitch shifter) → output. Parts that are off are not connected at all.
 function rewire(full){
   if(!G) return;
   const pOn = Math.abs(S.fx.pitch) >= 0.01, eOn = eqActive();
   const sig = (pOn ? 'p' : '-') + (eOn ? 'e' : '-');
   const mx = Math.max(0, ...S.eq.g);
-  G.pre.gain.value = Math.pow(10, -mx / 20);          // جلوگیری از اعوجاج وقتی باندها بالا می‌روند
+  G.pre.gain.value = Math.pow(10, -mx / 20);          // avoid distortion when bands are boosted
   G.filters.forEach((f, i) => { f.gain.value = S.eq.g[i]; });
   if(!full && sig === G.sig){ if(pOn && G.jungle) G.jungle.setRatio(Math.pow(2, S.fx.pitch / 12)); return; }
   G.sig = sig;
@@ -862,7 +863,7 @@ function applyFx(){
 }
 
 /* ================= views ================= */
-const col = new Intl.Collator('fa', {numeric:true, sensitivity:'base'});
+const col = new Intl.Collator(undefined, {numeric:true, sensitivity:'base'});
 const getPl = id => S.playlists.find(p => p.id === id);
 
 const isPlView = () => typeof S.view === 'number';
@@ -886,7 +887,7 @@ function viewIds(){
   return ids;
 }
 
-/* ---- عکس‌ها: فقط عکس ردیف‌های دیده‌شده در رم نگه داشته می‌شوند ---- */
+/* ---- covers: only covers of visible rows are kept in memory ---- */
 const COVER_CAP = 150;
 function coverUrl(id){ const u = S.covers.get(id); if(u){ S.covers.delete(id); S.covers.set(id, u); } return u || null; }
 function dropCoverUrl(id){ const u = S.covers.get(id); if(u){ URL.revokeObjectURL(u); S.covers.delete(id); } }
@@ -921,7 +922,7 @@ function coverHtml(t, cls){
   return coverUrlHtml(t.hasCover ? coverUrl(t.id) : null, (t.id * 57) % 360, cls, t.hasCover ? t.id : null);
 }
 
-const VIEW_TITLES = {all:'همه آهنگ‌ها', fav:'علاقه‌مندی‌ها', recent:'اخیراً پخش‌شده'};
+const VIEW_TITLES = {all:'All songs', fav:'Favorites', recent:'Recently played'};
 function renderSide(){
   $('#cAll').textContent = S.tracks.size;
   let nf = 0; for(const t of S.tracks.values()) if(t.fav) nf++;
@@ -930,20 +931,20 @@ function renderSide(){
   $('#plList').innerHTML = S.playlists.length
     ? S.playlists.map(p => '<button class="nav-item ' + (S.view === p.id ? 'active' : '') + '" data-view="' + p.id + '">' + icon('list') +
         '<span class="nm" dir="auto">' + esc(p.name) + '</span><span class="count">' + p.trackIds.filter(i => S.tracks.has(i)).length + '</span></button>').join('')
-    : '<div class="muted small pad">هنوز پلی‌لیستی نساخته‌اید</div>';
+    : '<div class="muted small pad">No playlists yet</div>';
 }
 function renderHeader(ids){
   const pl = isPlView() ? getPl(S.view) : null;
   $('#viewTitle').textContent = pl ? pl.name : (VIEW_TITLES[S.view] || '');
   const total = ids.reduce((s, id) => s + (S.tracks.get(id).duration || 0), 0);
-  $('#viewSub').textContent = ids.length + ' آهنگ' + (total ? ' · ' + fmt(total) : '');
+  $('#viewSub').textContent = plural(ids.length, 'song') + (total ? ' · ' + fmt(total) : '');
   $('#sortSel').classList.toggle('hidden', !(S.view === 'all' || S.view === 'fav'));
   $('#btnPlayAll').classList.toggle('hidden', !ids.length);
   $('#plActions').innerHTML = !isPlView() ? '' :
-    '<button class="btn" data-pa="rename">' + icon('edit') + ' تغییر نام</button><button class="btn danger" data-pa="del">' + icon('trash') + ' حذف پلی‌لیست</button>';
+    '<button class="btn" data-pa="rename">' + icon('edit') + ' Rename</button><button class="btn danger" data-pa="del">' + icon('trash') + ' Delete playlist</button>';
 }
 
-/* ---- لیست مجازی: فقط ردیف‌های دیده‌شده ساخته می‌شوند (برای کتابخانهٔ بزرگ هم سبک می‌ماند) ---- */
+/* ---- virtual list: only visible rows are built (stays light for a big library) ---- */
 const ROW_H = 56;
 const VIS = {ids:[], start:-1, end:-1, sortable:false};
 function rowHtml(id, i){
@@ -951,13 +952,13 @@ function rowHtml(id, i){
   return '<div class="row' + (id === S.curId ? ' cur' : '') + (srt ? ' srt' : '') + '" data-id="' + id + '" data-i="' + i + '"' + (srt ? ' draggable="true"' : '') + '>' +
     '<div class="c-idx"><span class="num">' + (i + 1) + '</span><span class="eq">' + icon('play', 'fill') + '</span></div>' +
     '<div>' + coverHtml(t) + '</div>' +
-    '<div class="c-main"><div class="t" dir="auto">' + esc(t.title) + (t.fav ? '<span class="favmark">' + icon('heart', 'fill') + '</span>' : '') + '</div><div class="a" dir="auto">' + esc(t.artist || 'خواننده نامشخص') + '</div></div>' +
+    '<div class="c-main"><div class="t" dir="auto">' + esc(t.title) + (t.fav ? '<span class="favmark">' + icon('heart', 'fill') + '</span>' : '') + '</div><div class="a" dir="auto">' + esc(t.artist || 'Unknown artist') + '</div></div>' +
     '<div class="c-album" dir="auto">' + esc(t.album) + '</div>' +
-    '<div class="c-dur"' + (t.plays ? ' title="' + t.plays + ' بار پخش"' : '') + '>' + (t.duration ? fmt(t.duration) : '—') + '</div>' +
+    '<div class="c-dur"' + (t.plays ? ' title="' + t.plays + ' plays"' : '') + '>' + (t.duration ? fmt(t.duration) : '—') + '</div>' +
     '<div class="c-act">' +
-      '<button data-act="fav" class="' + (t.fav ? 'on' : '') + '" title="' + (t.fav ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها') + '">' + icon('heart') + '</button>' +
-      '<button data-act="edit" title="ویرایش">' + icon('edit') + '</button>' +
-      '<button data-act="more" title="گزینه‌های بیشتر">' + icon('more') + '</button>' +
+      '<button data-act="fav" class="' + (t.fav ? 'on' : '') + '" title="' + (t.fav ? 'Remove from favorites' : 'Add to favorites') + '">' + icon('heart') + '</button>' +
+      '<button data-act="edit" title="Edit">' + icon('edit') + '</button>' +
+      '<button data-act="more" title="More options">' + icon('more') + '</button>' +
     '</div></div>';
 }
 function renderRows(force){
@@ -983,15 +984,15 @@ function renderList(){
   const L = $('#list'), st = L.scrollTop;
   if(!ids.length){
     let msg;
-    if(S.q.trim()) msg = '<div class="big">' + icon('search') + '</div><div>نتیجه‌ای پیدا نشد.</div>';
-    else if(S.view === 'all') msg = '<div class="big">' + icon('music') + '</div><div>کتابخانه خالی است.<br>فایل‌های موزیک را اینجا بکشید و رها کنید<br>یا روی «افزودن آهنگ» بزنید.' + (FOLDER ? '<br>می‌توانید فایل‌ها را مستقیم داخل پوشهٔ آهنگ‌ها بریزید و «رفرش پوشه» را بزنید.' : '') + '</div>';
-    else if(S.view === 'fav') msg = '<div class="big">' + icon('heart') + '</div><div>هنوز آهنگی را علاقه‌مندی نکرده‌اید.<br>روی قلب کنار هر آهنگ بزنید.</div>';
-    else if(S.view === 'recent') msg = '<div class="big">' + icon('clock') + '</div><div>هنوز آهنگی پخش نشده است.</div>';
-    else msg = '<div class="big">' + icon('list') + '</div><div>این پلی‌لیست خالی است.<br>روی دکمهٔ ⋮ کنار هر آهنگ بزنید و «افزودن به پلی‌لیست» را انتخاب کنید.</div>';
+    if(S.q.trim()) msg = '<div class="big">' + icon('search') + '</div><div>No results found.</div>';
+    else if(S.view === 'all') msg = '<div class="big">' + icon('music') + '</div><div>Your library is empty.<br>Drag and drop music files here<br>or click “Add songs”.' + (FOLDER ? '<br>You can also copy files straight into the music folder and click “Refresh folder”.' : '') + '</div>';
+    else if(S.view === 'fav') msg = '<div class="big">' + icon('heart') + '</div><div>No favorites yet.<br>Click the heart next to a song.</div>';
+    else if(S.view === 'recent') msg = '<div class="big">' + icon('clock') + '</div><div>Nothing played yet.</div>';
+    else msg = '<div class="big">' + icon('list') + '</div><div>This playlist is empty.<br>Click the ⋮ button next to a song and choose “Add to playlist”.</div>';
     L.innerHTML = '<div class="empty">' + msg + '</div>';
     return;
   }
-  L.innerHTML = '<div class="thead"><span class="c-idx">#</span><span></span><span>آهنگ</span><span class="c-album">آلبوم</span><span style="text-align:center">مدت</span><span></span></div><div id="rows"></div>';
+  L.innerHTML = '<div class="thead"><span class="c-idx">#</span><span></span><span>Song</span><span class="c-album">Album</span><span style="text-align:center">Time</span><span></span></div><div id="rows"></div>';
   L.scrollTop = st;
   renderRows(true);
 }
@@ -1013,21 +1014,21 @@ function updateNowPlaying(){
   $('#npCover').innerHTML = coverHtml(t);
   hydrateCovers($('#npCover'));
   syncNpFav();
-  $('#npTitle').textContent = t ? t.title : 'آهنگی انتخاب نشده';
-  $('#npArtist').textContent = t ? ([t.artist, t.album].filter(Boolean).join(' · ') || '—') : 'یک آهنگ را برای پخش انتخاب کنید';
-  document.title = t && S.playing ? t.title + ' — موزیک پلیر' : 'موزیک پلیر من';
+  $('#npTitle').textContent = t ? t.title : 'Nothing selected';
+  $('#npArtist').textContent = t ? ([t.artist, t.album].filter(Boolean).join(' · ') || '—') : 'Pick a song to play';
+  document.title = t && S.playing ? t.title + ' — My Music Player' : 'My Music Player';
   if(t) setMediaSession(t);
   markCurrent();
 }
 function syncNpFav(){
   const t = S.tracks.get(S.curId), b = $('#npFav');
   b.classList.toggle('hidden', !t); b.classList.toggle('on', !!(t && t.fav));
-  b.title = t && t.fav ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها';
+  b.title = t && t.fav ? 'Remove from favorites' : 'Add to favorites';
 }
 function syncPlayBtn(){
   $('#btnPlay').innerHTML = icon(S.playing ? 'pause' : 'play', 'fill');
   const t = S.tracks.get(S.curId);
-  document.title = t && S.playing ? t.title + ' — موزیک پلیر' : 'موزیک پلیر من';
+  document.title = t && S.playing ? t.title + ' — My Music Player' : 'My Music Player';
 }
 function setMediaSession(t){
   if(!('mediaSession' in navigator)) return;
@@ -1044,7 +1045,7 @@ function playIndex(i){
   if(i < 0 || i >= S.queue.length){ stopPlayback(); return; }
   return startTrack(S.queue[i], i);
 }
-// qi: جای آهنگ در لیست پخش؛ برای آهنگ‌های «صف» null است تا بعد از آن‌ها لیست از همان‌جا ادامه پیدا کند
+// qi: position in the play list; null for queued songs so the list continues from the same spot afterwards
 async function startTrack(id, qi){
   const t = S.tracks.get(id);
   if(!t) return;
@@ -1053,15 +1054,15 @@ async function startTrack(id, qi){
   ensureGraph();
   updateNowPlaying();
   if(FOLDER){
-    if(!t.file){ toast('مسیر فایل این آهنگ مشخص نیست؛ دکمهٔ رفرش را بزن'); return; }
+    if(!t.file){ toast('This song has no file path; click Refresh folder'); return; }
     const ok = await loadUrl(fileUrl(t.file));
     if(S.curId !== id) return;
     if(!ok){
       S.playing = false; syncPlayBtn();
-      let why = 'فرمت پشتیبانی نمی‌شود یا فایل خراب است';
-      try{ if(!await FS.exists(fullPath(t.file))) why = 'فایل در پوشه پیدا نشد (حذف یا جابه‌جا شده)؛ دکمهٔ رفرش را بزن'; }catch(e){}
+      let why = 'Unsupported format or corrupted file';
+      try{ if(!await FS.exists(fullPath(t.file))) why = 'File not found in the folder (deleted or moved); click Refresh folder'; }catch(e){}
       console.warn('load failed: ' + JSON.stringify({file: t.file, error: lastLoadErr}));
-      toast('پخش نشد: ' + why + (lastLoadErr ? ' | خطا: ' + lastLoadErr : ''), false, 9000);
+      toast('Can\'t play: ' + why + (lastLoadErr ? ' | error: ' + lastLoadErr : ''), false, 9000);
       return;
     }
     applyFx();
@@ -1070,18 +1071,18 @@ async function startTrack(id, qi){
   }
   const blob = await dbGet('audio', id);
   if(S.curId !== id) return;
-  if(!blob){ toast('فایل این آهنگ پیدا نشد'); return; }
+  if(!blob){ toast('Song file not found'); return; }
   let ok = await loadSource(blob, preferData, id);
   if(S.curId !== id) return;
   if(!ok && !preferData && /safety|not allowed/i.test(lastLoadErr)){
-    // مرورگر یا پنجرهٔ میزبان blob: را رد کرده؛ با data: امتحان کن
+    // the browser or host window rejected blob:; try data:
     ok = await loadSource(blob, true, id);
     if(S.curId !== id) return;
     if(ok) preferData = true;
   }
   let head = null, kind = '';
   if(!ok){
-    // type خالی یا اشتباه: فرمت را از روی محتوا تشخیص بده و یک بار دیگر امتحان کن
+    // empty or wrong type: detect the format from the content and try once more
     head = new Uint8Array(await blob.slice(0, 16).arrayBuffer());
     kind = sniffMime(head);
     if(S.curId !== id) return;
@@ -1092,10 +1093,10 @@ async function startTrack(id, qi){
   }
   if(!ok){
     const d = describeFile(head, blob.size, kind, t.size);
-    if(/safety|not allowed/i.test(lastLoadErr)) d.verdict = 'این پنجره پخش فایل را مسدود کرده؛ فایل HTML را روی کامپیوتر ذخیره کن و مستقیم در Chrome یا Edge باز کن (نه داخل پیش‌نمایش)';
+    if(/safety|not allowed/i.test(lastLoadErr)) d.verdict = 'This window blocks audio playback; save the HTML file locally and open it directly in Chrome or Edge (not in a preview).';
     console.warn('load failed: ' + JSON.stringify({file: t.fileName, size: blob.size, storedSize: t.size, blobType: blob.type, head: d.hex, verdict: d.verdict, error: lastLoadErr}));
     S.playing = false; syncPlayBtn();
-    toast('پخش نشد: ' + d.verdict + ' | حجم: ' + blob.size + ' بایت | شروع فایل: ' + d.hex + (lastLoadErr ? ' | خطا: ' + lastLoadErr : ''), false, 15000);
+    toast('Can\'t play: ' + d.verdict + ' | size: ' + blob.size + ' bytes | file start: ' + d.hex + (lastLoadErr ? ' | error: ' + lastLoadErr : ''), false, 15000);
     return;
   }
   applyFx();
@@ -1106,13 +1107,13 @@ function describeFile(u, size, kind, storedSize){
   u = u || new Uint8Array(0);
   const hex = Array.from(u.subarray(0, 8)).map(b => b.toString(16).padStart(2, '0')).join(' ') || '—';
   let verdict;
-  if(!size) verdict = 'فایل ذخیره‌شده خالی است';
-  else if(storedSize && storedSize !== size) verdict = 'فایل ذخیره‌شده با فایل اصلی هم‌اندازه نیست (ذخیرهٔ ناقص)';
-  else if(kind === 'unsupported') verdict = 'فرمت WMA است';
-  else if(u[0] === 0x3C) verdict = 'محتوا شبیه صفحهٔ وب (HTML) است، نه آهنگ';
-  else if(u[0] === 0x50 && u[1] === 0x4B) verdict = 'فایل ZIP است، نه آهنگ';
-  else if(kind) verdict = 'ساختار ' + kind.replace('audio/', '').toUpperCase() + ' دارد ولی مرورگر لودش نکرد';
-  else verdict = 'محتوای فایل، صوتیِ شناخته‌شده نیست';
+  if(!size) verdict = 'The stored file is empty';
+  else if(storedSize && storedSize !== size) verdict = "The stored file size doesn't match the original (incomplete save)";
+  else if(kind === 'unsupported') verdict = 'WMA format is not supported';
+  else if(u[0] === 0x3C) verdict = 'The content looks like a web page (HTML), not audio';
+  else if(u[0] === 0x50 && u[1] === 0x4B) verdict = 'The file is a ZIP, not audio';
+  else if(kind) verdict = 'Looks like ' + kind.replace('audio/', '').toUpperCase() + ' but the browser could not load it';
+  else verdict = 'The file content is not a known audio format';
   return {hex, verdict};
 }
 let preferData = false;
@@ -1129,7 +1130,7 @@ async function loadSource(blob, asData, id){
   } else { url = curUrl = URL.createObjectURL(blob); }
   return waitLoad(url);
 }
-// آهنگ از پوشه: مستقیم از دیسک و به‌صورت جریانی پخش می‌شود (بدون بارگذاری کل فایل در رم)
+// song from the folder: streamed straight from disk (the whole file is never loaded into memory)
 function loadUrl(url){
   if(curUrl){ URL.revokeObjectURL(curUrl); curUrl = null; }
   lastLoadErr = '';
@@ -1206,7 +1207,7 @@ let seeking = false;
 audio.addEventListener('play', () => { S.playing = true; syncPlayBtn(); ensureGraph(); });
 audio.addEventListener('pause', () => {
   S.playing = false; syncPlayBtn(); saveResume();
-  // وقتی مدتی پخش نیست، موتور صدا را بخواب بگذار تا پردازنده درگیر نماند
+  // when nothing has played for a while, suspend the audio engine so the CPU stays idle
   clearTimeout(idleT);
   if(ctx) idleT = setTimeout(() => { if(audio.paused && ctx && ctx.state === 'running') ctx.suspend().catch(() => {}); }, 3000);
 });
@@ -1245,7 +1246,7 @@ audio.addEventListener('timeupdate', () => {
   $('#tDur').textContent = fmt(d);
 });
 audio.addEventListener('error', () => {
-  if(!loadingSrc && S.curId != null && audio.error){ toast('خطا در پخش این فایل'); }
+  if(!loadingSrc && S.curId != null && audio.error){ toast('Error playing this file'); }
 });
 
 const seekEl = $('#seek');
@@ -1276,13 +1277,13 @@ function syncFxUI(){
   const {speed, pitch, link} = S.fx;
   $('#fxSpeed').value = speed; $('#fxPitch').value = pitch; $('#fxLink').checked = link;
   $('#vSpeed').textContent = speed.toFixed(2) + '×';
-  $('#vPitch').textContent = fmtSt(pitch) + ' نیم‌پرده';
+  $('#vPitch').textContent = fmtSt(pitch) + ' semitones';
   const eff = (link ? 12 * Math.log2(speed) : 0) + pitch;
   $('#fxNote').textContent = link
-    ? 'پیچ نهایی صدا حدود ' + fmtSt(eff) + ' نیم‌پرده نسبت به اصل آهنگ است.'
-    : (Math.abs(pitch) > 0.01 ? 'پیچ بدون تغییر سرعت عوض می‌شود. روی مقدارهای زیاد ممکن است کمی لرزش در صدا شنیده شود.' : 'سرعت بدون تغییر پیچ عوض می‌شود.');
+    ? 'Final pitch is about ' + fmtSt(eff) + ' semitones relative to the original.'
+    : (Math.abs(pitch) > 0.01 ? 'Pitch changes without changing speed. Large values may add a slight wobble to the sound.' : 'Speed changes without changing pitch.');
   const changed = Math.abs(speed - 1) > 0.001 || Math.abs(pitch) > 0.01;
-  $('#fxLabel').textContent = changed ? speed.toFixed(2) + '× · ' + fmtSt(eff) : 'سرعت و پیچ';
+  $('#fxLabel').textContent = changed ? speed.toFixed(2) + '× · ' + fmtSt(eff) : 'Speed and pitch';
   $('#btnFx').classList.toggle('on', changed);
 }
 function fxChanged(){ applyFx(); syncFxUI(); store.set('mp_fx', S.fx); }
@@ -1303,7 +1304,7 @@ $('#fx').addEventListener('click', e => {
 });
 $('#fxClose').addEventListener('click', () => $('#fx').classList.add('hidden'));
 
-/* ================= اکولایزر ================= */
+/* ================= Equalizer ================= */
 function updEqLabels(){
   S.eq.g.forEach((g, i) => { const e = $('#eqg' + i); if(e) e.textContent = (g > 0 ? '+' : '') + g; });
   $('#btnEq').classList.toggle('on', eqActive());
@@ -1320,17 +1321,17 @@ $('#eqPresets').addEventListener('click', e => {
   S.eq.g = EQ_PRESETS[+b.dataset.p][1].slice(); drawEq(); eqChanged();
 });
 
-/* ================= تایمر خواب ================= */
+/* ================= Sleep timer ================= */
 let sleepT = null;
 function updSleepUI(){
   const badge = $('#sleepBadge'), st = $('#sleepStatus');
   $('#sleepCancel').classList.toggle('hidden', !sleepT);
   $('#btnSleep').classList.toggle('on', !!sleepT);
-  if(!sleepT){ badge.classList.add('hidden'); st.textContent = 'تایمر خاموش است.'; return; }
+  if(!sleepT){ badge.classList.add('hidden'); st.textContent = 'Timer is off.'; return; }
   badge.classList.remove('hidden');
-  if(sleepT.eot){ badge.textContent = '●'; st.textContent = 'پخش بعد از پایان این آهنگ متوقف می‌شود.'; return; }
+  if(sleepT.eot){ badge.textContent = '●'; st.textContent = 'Playback will stop after this song ends.'; return; }
   const m = Math.max(1, Math.ceil((sleepT.end - Date.now()) / 60000));
-  badge.textContent = m; st.textContent = 'پخش حدود ' + m + ' دقیقهٔ دیگر متوقف می‌شود.';
+  badge.textContent = m; st.textContent = 'Playback stops in about ' + m + ' min.';
 }
 function sleepCancel(){
   if(sleepT){ clearInterval(sleepT.iv); sleepT = null; audio.volume = +volEl.value; }
@@ -1339,8 +1340,8 @@ function sleepCancel(){
 function sleepTick(){
   if(!sleepT || sleepT.eot) return;
   const left = (sleepT.end - Date.now()) / 1000;
-  if(left <= 0){ audio.pause(); sleepCancel(); toast('تایمر خواب: پخش متوقف شد'); return; }
-  if(left < 20 && !audio.paused) audio.volume = Math.max(0, +volEl.value * left / 20);   // کم شدن آرام صدا
+  if(left <= 0){ audio.pause(); sleepCancel(); toast('Sleep timer: playback stopped'); return; }
+  if(left < 20 && !audio.paused) audio.volume = Math.max(0, +volEl.value * left / 20);   // gentle fade-out
   updSleepUI();
 }
 function sleepStart(min){
@@ -1351,7 +1352,7 @@ function sleepStart(min){
 $('#sleepChips').addEventListener('click', e => { const b = e.target.closest('[data-min]'); if(!b) return; const v = b.dataset.min; sleepStart(v === 'eot' ? 'eot' : +v); });
 $('#sleepCancel').addEventListener('click', sleepCancel);
 
-/* ---- پنجره‌های شناور پایین (سرعت/پیچ، اکولایزر، تایمر) ---- */
+/* ---- floating popups at the bottom (speed/pitch, equalizer, timer) ---- */
 const POPS = [['#fx', '#btnFx'], ['#eqPop', '#btnEq'], ['#sleepPop', '#btnSleep']];
 function togglePop(id){
   for(const [p] of POPS) if(p !== id) $(p).classList.add('hidden');
@@ -1364,7 +1365,7 @@ document.addEventListener('mousedown', e => {
   for(const [p, b] of POPS){ const f = $(p); if(!f.classList.contains('hidden') && !f.contains(e.target) && !$(b).contains(e.target)) f.classList.add('hidden'); }
 });
 
-/* ================= علاقه‌مندی‌ها ================= */
+/* ================= Favorites ================= */
 async function toggleFav(id){
   const t = S.tracks.get(id); if(!t) return;
   t.fav = !t.fav;
@@ -1375,7 +1376,7 @@ async function toggleFav(id){
 }
 $('#npFav').addEventListener('click', () => { if(S.curId != null) toggleFav(S.curId); });
 
-/* ================= صف پخش ================= */
+/* ================= Play queue ================= */
 function syncQueueBadge(){
   const b = $('#qBadge'); b.classList.toggle('hidden', !S.upNext.length); b.textContent = S.upNext.length;
 }
@@ -1384,24 +1385,24 @@ function enqueue(id, front){
   if(S.curId == null && !S.queue.length){ playList([id], id); return; }
   if(front) S.upNext.unshift(id); else S.upNext.push(id);
   syncQueueBadge(); refreshQueueModal();
-  toast(front ? 'بعد از این آهنگ پخش می‌شود' : 'به صف اضافه شد');
+  toast(front ? 'Will play next' : 'Added to queue');
 }
 let queueRefresh = null;
 function refreshQueueModal(){ if(queueRefresh) queueRefresh(); }
 function openQueue(){
-  openModal('<h3>صف پخش</h3><div id="qBody"></div><div class="actions"><button class="btn danger" id="qClear">خالی کردن صف</button><button class="btn primary" data-close>بستن</button></div>',
+  openModal('<h3>Play queue</h3><div id="qBody"></div><div class="actions"><button class="btn danger" id="qClear">Clear queue</button><button class="btn primary" data-close>Close</button></div>',
     m => {
-      const row = (t, i) => '<div class="qrow">' + coverHtml(t) + '<div class="qt"><div dir="auto">' + esc(t.title) + '</div><div class="a" dir="auto">' + esc(t.artist || 'خواننده نامشخص') + '</div></div>' +
-        (i >= 0 ? '<div class="qb"><button data-q="up" data-i="' + i + '" title="بالا">' + icon('up') + '</button><button data-q="down" data-i="' + i + '" title="پایین">' + icon('down') + '</button><button data-q="rm" data-i="' + i + '" title="حذف از صف">' + icon('x') + '</button></div>' : '') + '</div>';
+      const row = (t, i) => '<div class="qrow">' + coverHtml(t) + '<div class="qt"><div dir="auto">' + esc(t.title) + '</div><div class="a" dir="auto">' + esc(t.artist || 'Unknown artist') + '</div></div>' +
+        (i >= 0 ? '<div class="qb"><button data-q="up" data-i="' + i + '" title="Up">' + icon('up') + '</button><button data-q="down" data-i="' + i + '" title="Down">' + icon('down') + '</button><button data-q="rm" data-i="' + i + '" title="Remove from queue">' + icon('x') + '</button></div>' : '') + '</div>';
       const draw = () => {
         const cur = S.tracks.get(S.curId);
-        let h = '<div class="qh">در حال پخش</div>' + (cur ? row(cur, -1) : '<div class="muted small pad">چیزی پخش نمی‌شود.</div>');
-        h += '<div class="qh">صف (بعدی‌ها)</div>' + (S.upNext.length
+        let h = '<div class="qh">Now playing</div>' + (cur ? row(cur, -1) : '<div class="muted small pad">Nothing is playing.</div>');
+        h += '<div class="qh">Up next (queue)</div>' + (S.upNext.length
           ? S.upNext.map((id, i) => S.tracks.has(id) ? row(S.tracks.get(id), i) : '').join('')
-          : '<div class="muted small pad">صف خالی است. از منوی ⋮ کنار آهنگ، «پخش بعدی» یا «افزودن به صف» را بزنید.</div>');
+          : '<div class="muted small pad">The queue is empty. Use the ⋮ menu next to a song: “Play next” or “Add to queue”.</div>');
         const rest = [];
         for(let i = S.qi + 1; i < S.queue.length && rest.length < 15; i++) if(S.tracks.has(S.queue[i])) rest.push(S.queue[i]);
-        if(rest.length) h += '<div class="qh">ادامهٔ لیست</div>' + rest.map(id => row(S.tracks.get(id), -1)).join('');
+        if(rest.length) h += '<div class="qh">Continuing from the list</div>' + rest.map(id => row(S.tracks.get(id), -1)).join('');
         m.querySelector('#qBody').innerHTML = h;
         hydrateCovers(m);
       };
@@ -1419,16 +1420,16 @@ function openQueue(){
 }
 $('#btnQueue').addEventListener('click', openQueue);
 
-/* ================= منوی ⋮ و کلیک راست ================= */
+/* ================= ⋮ menu and right-click ================= */
 function closeMenu(){ const m = $('#ctx'); if(m) m.remove(); }
 function openMenu(id, x, y){
   closeMenu();
   const t = S.tracks.get(id); if(!t) return;
   const items = [
-    ['playnext', 'پخش بعدی', 'next'], ['queue', 'افزودن به صف', 'queue'],
-    ['fav', t.fav ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها', 'heart'],
-    ['addpl', 'افزودن به پلی‌لیست', 'plus'], ['edit', 'ویرایش مشخصات', 'edit'], null,
-    isPlView() ? ['rmpl', 'حذف از این پلی‌لیست', 'minus', 'danger'] : ['del', FOLDER ? 'حذف (انتقال به سطل بازیافت)' : 'حذف از کتابخانه', 'trash', 'danger']
+    ['playnext', 'Play next', 'next'], ['queue', 'Add to queue', 'queue'],
+    ['fav', t.fav ? 'Remove from favorites' : 'Add to favorites', 'heart'],
+    ['addpl', 'Add to playlist', 'plus'], ['edit', 'Edit details', 'edit'], null,
+    isPlView() ? ['rmpl', 'Remove from this playlist', 'minus', 'danger'] : ['del', FOLDER ? 'Delete (move to Recycle Bin)' : 'Remove from library', 'trash', 'danger']
   ];
   const m = document.createElement('div'); m.id = 'ctx';
   m.innerHTML = items.map(it => it ? '<button data-m="' + it[0] + '" class="' + (it[3] || '') + '">' + icon(it[2]) + '<span>' + it[1] + '</span></button>' : '<div class="sep"></div>').join('');
@@ -1459,7 +1460,7 @@ $('#list').addEventListener('contextmenu', e => {
   e.preventDefault(); openMenu(Number(row.dataset.id), e.clientX, e.clientY);
 });
 
-/* ================= جابه‌جایی آهنگ‌ها در پلی‌لیست با کشیدن ================= */
+/* ================= drag to reorder songs in a playlist ================= */
 let dragId = null;
 const clearDropMarks = () => document.querySelectorAll('.row.drop-before,.row.drop-after').forEach(r => r.classList.remove('drop-before', 'drop-after'));
 $('#list').addEventListener('dragstart', e => {
@@ -1474,7 +1475,7 @@ $('#list').addEventListener('dragover', e => {
   clearDropMarks();
   const row = e.target.closest('.row');
   if(row && Number(row.dataset.id) !== dragId){ const r = row.getBoundingClientRect(); row.classList.add(e.clientY > r.top + r.height / 2 ? 'drop-after' : 'drop-before'); }
-  const L = $('#list'), lr = L.getBoundingClientRect();     // اسکرول خودکار کنار لبه‌ها
+  const L = $('#list'), lr = L.getBoundingClientRect();     // auto-scroll near the edges
   if(e.clientY < lr.top + 50) L.scrollTop -= 14; else if(e.clientY > lr.bottom - 50) L.scrollTop += 14;
 });
 $('#list').addEventListener('drop', async e => {
@@ -1493,7 +1494,7 @@ $('#list').addEventListener('drop', async e => {
 });
 $('#list').addEventListener('dragend', () => { dragId = null; clearDropMarks(); document.querySelectorAll('.row.dragging').forEach(r => r.classList.remove('dragging')); });
 
-/* ================= بارگذاری دوبارهٔ تنظیمات (بعد از بازیابی پشتیبان) ================= */
+/* ================= reload settings (after restoring a backup) ================= */
 function reloadSettings(){
   S.sort = store.get('mp_sort', 'new'); $('#sortSel').value = S.sort;
   S.shuffle = store.get('mp_shuffle', false); S.repeat = store.get('mp_repeat', 0);
@@ -1525,7 +1526,7 @@ function askText(title, val, okLabel){
   return new Promise(res => {
     let result = null;
     openModal('<h3>' + esc(title) + '</h3><input class="inp" id="mText" dir="auto" maxlength="80" value="' + esc(val || '') + '">' +
-      '<div class="actions"><button class="btn primary" id="mOk">' + esc(okLabel || 'تأیید') + '</button><button class="btn" data-close>انصراف</button></div>',
+      '<div class="actions"><button class="btn primary" id="mOk">' + esc(okLabel || 'OK') + '</button><button class="btn" data-close>Cancel</button></div>',
       (m, close) => {
         const inp = m.querySelector('#mText'); inp.focus(); inp.select();
         const ok = () => { const v = inp.value.trim(); if(!v) return; result = v; close(); };
@@ -1537,15 +1538,15 @@ function askText(title, val, okLabel){
 function askConfirm(msg, okLabel){
   return new Promise(res => {
     let result = false;
-    openModal('<h3>' + esc(msg) + '</h3><div class="actions"><button class="btn danger" id="mOk">' + esc(okLabel || 'تأیید') + '</button><button class="btn" data-close>انصراف</button></div>',
+    openModal('<h3>' + esc(msg) + '</h3><div class="actions"><button class="btn danger" id="mOk">' + esc(okLabel || 'OK') + '</button><button class="btn" data-close>Cancel</button></div>',
       (m, close) => { m.querySelector('#mOk').onclick = () => { result = true; close(); }; },
       () => res(result));
   });
 }
 
-/* ================= نوشتن مشخصات داخل خود فایل MP3 (اختیاری و امن) =================
-   فقط تگ ID3v2 ابتدای فایل بازسازی می‌شود. فریم‌های دیگر (غیر از نام، خواننده، آلبوم و عکس) بدون تغییر کپی می‌شوند
-   و بخش صوتی فایل بایت‌به‌بایت همان می‌ماند. نتیجه اول در فایل موقت نوشته و بررسی می‌شود؛ فقط اگر درست بود جای فایل اصلی می‌نشیند. */
+/* ================= Writing tags into the MP3 file itself (optional and safe) =================
+   Only the ID3v2 tag at the start of the file is rebuilt. Other frames (besides title, artist, album and cover) are copied unchanged
+   and the audio data stays byte-for-byte identical. The result is written to a temp file and verified first; only if correct does it replace the original. */
 const te = new TextEncoder();
 const u32be = n => [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255];
 const ssEnc = n => [(n >>> 21) & 127, (n >>> 14) & 127, (n >>> 7) & 127, n & 127];
@@ -1564,31 +1565,31 @@ function id3Text(id, text, ver){
 function id3Apic(bytes, ver){
   return id3Frame('APIC', cat([Uint8Array.of(0), te.encode('image/jpeg'), Uint8Array.of(0, 3, 0), bytes]), ver);
 }
-// buf: کل تگ (۱۰ بایت سرآیند + اندازهٔ تگ). اگر تگ نباشد null؛ اگر قابل‌اعتماد نباشد خطا
+// buf: the whole tag (10 header bytes + tag size). null if there is no tag; throws if it cannot be trusted
 function parseId3(buf){
   if(buf.length < 10 || buf[0] !== 0x49 || buf[1] !== 0x44 || buf[2] !== 0x33) return null;
   const ver = buf[3], flags = buf[5];
-  if(ver !== 3 && ver !== 4) throw new Error('نسخهٔ تگ این فایل (ID3v2.' + ver + ') پشتیبانی نمی‌شود');
-  if(flags & 0x80) throw new Error('تگ این فایل از نوع unsynchronisation سراسری است و تغییرش امن نیست');
-  if(buf[6] & 0x80 || buf[7] & 0x80 || buf[8] & 0x80 || buf[9] & 0x80) throw new Error('سرآیند تگ خراب است');
+  if(ver !== 3 && ver !== 4) throw new Error('This file\'s tag version (ID3v2.' + ver + ') is not supported');
+  if(flags & 0x80) throw new Error('This tag uses global unsynchronisation, so changing it is not safe');
+  if(buf[6] & 0x80 || buf[7] & 0x80 || buf[8] & 0x80 || buf[9] & 0x80) throw new Error('The tag header is corrupted');
   const size = ssDec(buf, 6), end = 10 + size;
-  if(buf.length < end) throw new Error('تگ ناقص است');
+  if(buf.length < end) throw new Error('The tag is incomplete');
   let p = 10;
   if(flags & 0x40) p += ver === 4 ? ssDec(buf, p) : u32dec(buf, p) + 4;
   const frames = [];
   while(p + 10 <= end){
-    if(buf[p] === 0) break;                                   // پدینگ
+    if(buf[p] === 0) break;                                   // padding
     const id = String.fromCharCode(buf[p], buf[p + 1], buf[p + 2], buf[p + 3]);
-    if(!/^[A-Z0-9]{4}$/.test(id)) throw new Error('ساختار تگ خراب است');
-    if(ver === 4 && (buf[p + 4] & 0x80 || buf[p + 5] & 0x80 || buf[p + 6] & 0x80 || buf[p + 7] & 0x80)) throw new Error('اندازهٔ فریم تگ استاندارد نیست');
+    if(!/^[A-Z0-9]{4}$/.test(id)) throw new Error('The tag structure is corrupted');
+    if(ver === 4 && (buf[p + 4] & 0x80 || buf[p + 5] & 0x80 || buf[p + 6] & 0x80 || buf[p + 7] & 0x80)) throw new Error('A tag frame size is non-standard');
     const fs = ver === 4 ? ssDec(buf, p + 4) : u32dec(buf, p + 4);
-    if(p + 10 + fs > end) throw new Error('ساختار تگ خراب است');
+    if(p + 10 + fs > end) throw new Error('The tag structure is corrupted');
     frames.push({id, raw: buf.subarray(p, p + 10 + fs)});
     p += 10 + fs;
   }
   return {ver, frames, audioStart: end + (ver === 4 && (flags & 0x10) ? 10 : 0)};
 }
-// ch: {title, artist, album, cover} — cover: undefined = دست نزن، null = حذف، Uint8Array(JPEG) = جایگزین
+// ch: {title, artist, album, cover} — cover: undefined = leave alone, null = remove, Uint8Array(JPEG) = replace
 function buildId3(parsed, ch){
   const ver = parsed ? parsed.ver : 3;
   const drop = new Set(['TIT2', 'TPE1', 'TALB']);
@@ -1612,13 +1613,13 @@ async function writeTagsToFile(t, ch){
   let parsed = null, tagLen = 0;
   const head = await readAt(path, 0, 10);
   if(head.length >= 10 && head[0] === 0x49 && head[1] === 0x44 && head[2] === 0x33){
-    if(head[6] & 0x80 || head[7] & 0x80 || head[8] & 0x80 || head[9] & 0x80) throw new Error('سرآیند تگ خراب است');
+    if(head[6] & 0x80 || head[7] & 0x80 || head[8] & 0x80 || head[9] & 0x80) throw new Error('The tag header is corrupted');
     const full = await readAt(path, 0, 10 + ssDec(head, 6));
     parsed = parseId3(full); tagLen = parsed.audioStart;
   }
   const newTag = buildId3(parsed, ch);
   const oldSize = (await FS.stat(path)).size, audioLen = oldSize - tagLen;
-  if(audioLen <= 0) throw new Error('بخش صوتی فایل پیدا نشد');
+  if(audioLen <= 0) throw new Error('No audio data found in the file');
   const src = await FS.open(path, {read: true});
   try{
     let pos = tagLen, sent = false;
@@ -1630,7 +1631,7 @@ async function writeTagsToFile(t, ch){
         await src.seek(pos, FS.SeekMode.Start);
         const buf = new Uint8Array(want); let got = 0;
         while(got < want){ const n = await src.read(got ? buf.subarray(got) : buf); if(!n) break; got += n; }
-        if(!got){ c.error(new Error('خواندن فایل ناقص ماند')); return; }
+        if(!got){ c.error(new Error('Reading the file stopped early')); return; }
         pos += got; c.enqueue(buf.subarray(0, got));
       }
     });
@@ -1638,21 +1639,21 @@ async function writeTagsToFile(t, ch){
   } catch(e){ try{ await FS.remove(tmp); }catch(_){} throw e; }
   finally{ try{ await src.close(); }catch(e){} }
   try{
-    // بررسی نتیجه پیش از جایگزینی
+    // verify the result before replacing
     const newSize = (await FS.stat(tmp)).size;
-    if(newSize !== newTag.length + audioLen) throw new Error('حجم فایل جدید درست نیست');
+    if(newSize !== newTag.length + audioLen) throw new Error('The new file size is wrong');
     const rd = await diskReader(tmp);
     let tg; try{ tg = await readTags(rd); } finally{ try{ await rd.close(); }catch(e){} }
-    if((tg.title || '') !== (ch.title || '').trim() || (tg.artist || '') !== (ch.artist || '').trim() || (tg.album || '') !== (ch.album || '').trim()) throw new Error('نوشته‌های تگ با مقدار خواسته‌شده یکی نیست');
-    if(ch.cover && !(tg.cover && tg.cover.size === ch.cover.length)) throw new Error('عکس درست نوشته نشد');
+    if((tg.title || '') !== (ch.title || '').trim() || (tg.artist || '') !== (ch.artist || '').trim() || (tg.album || '') !== (ch.album || '').trim()) throw new Error('The written tag doesn\'t match the requested values');
+    if(ch.cover && !(tg.cover && tg.cover.size === ch.cover.length)) throw new Error('The cover was not written correctly');
     const n = Math.min(65536, audioLen);
-    if(!sameBytes(await readAt(tmp, newTag.length, n), await readAt(path, tagLen, n))) throw new Error('ابتدای بخش صوتی تغییر کرده');
-    if(!sameBytes(await readAt(tmp, newSize - n, n), await readAt(path, oldSize - n, n))) throw new Error('انتهای بخش صوتی تغییر کرده');
+    if(!sameBytes(await readAt(tmp, newTag.length, n), await readAt(path, tagLen, n))) throw new Error('The start of the audio data changed');
+    if(!sameBytes(await readAt(tmp, newSize - n, n), await readAt(path, oldSize - n, n))) throw new Error('The end of the audio data changed');
     await FS.rename(tmp, path);
     t.size = newSize;
   }catch(e){ try{ await FS.remove(tmp); }catch(_){} throw e; }
 }
-// فایلِ در حال پخش را برای مدتی آزاد می‌کند (ویندوز فایل باز را قفل می‌کند) و بعد دوباره بارگذاری می‌کند
+// releases the currently playing file for a while (Windows locks open files), then reloads it
 async function writeTagsSafely(t, ch){
   const wasCur = S.curId === t.id, wasPlaying = wasCur && !audio.paused, at = wasCur ? audio.currentTime : 0;
   if(wasCur){ audio.pause(); audio.removeAttribute('src'); try{ audio.load(); }catch(e){} await sleep(250); }
@@ -1671,11 +1672,11 @@ function openEdit(id){
   let newCover; // undefined = unchanged, null = removed, Blob = replaced
   let tmpUrl = null;
   const canWrite = FOLDER && !!t.file && /\.mp3$/i.test(t.file);
-  openModal('<h3>ویرایش آهنگ</h3><div class="edit-grid">' +
-    '<div class="edit-cover"><div id="eCover"></div><div style="display:flex;gap:6px"><button class="btn sm" id="eChange">تغییر عکس</button><button class="btn sm" id="eRemove">حذف عکس</button></div><input type="file" id="eFile" accept="image/*" hidden></div>' +
-    '<div class="edit-fields"><label>نام آهنگ<input class="inp" id="eTitle" dir="auto" maxlength="200"></label><label>خواننده<input class="inp" id="eArtist" dir="auto" maxlength="200"></label><label>آلبوم<input class="inp" id="eAlbum" dir="auto" maxlength="200"></label></div></div>' +
-    (canWrite ? '<label class="linkrow" style="margin-top:14px"><input type="checkbox" id="eWrite"><span><b>نوشتن تغییرات روی خود فایل MP3</b><br><span class="muted small">نام، خواننده، آلبوم و عکس داخل خود فایل هم ذخیره می‌شود تا در گوشی و برنامه‌های دیگر هم دیده شود. فایل اصلی تا لحظهٔ آخر دست‌نخورده می‌ماند و اگر خطایی پیش بیاید چیزی تغییر نمی‌کند.</span></span></label>' : '') +
-    '<div class="actions"><button class="btn primary" id="eSave">ذخیره</button><button class="btn" data-close>انصراف</button></div>',
+  openModal('<h3>Edit song</h3><div class="edit-grid">' +
+    '<div class="edit-cover"><div id="eCover"></div><div style="display:flex;gap:6px"><button class="btn sm" id="eChange">Change cover</button><button class="btn sm" id="eRemove">Remove cover</button></div><input type="file" id="eFile" accept="image/*" hidden></div>' +
+    '<div class="edit-fields"><label>Title<input class="inp" id="eTitle" dir="auto" maxlength="200"></label><label>Artist<input class="inp" id="eArtist" dir="auto" maxlength="200"></label><label>Album<input class="inp" id="eAlbum" dir="auto" maxlength="200"></label></div></div>' +
+    (canWrite ? '<label class="linkrow" style="margin-top:14px"><input type="checkbox" id="eWrite"><span><b>Also write changes into the MP3 file itself</b><br><span class="muted small">Title, artist, album and cover are also saved inside the file so other apps and phones can see them. The original file stays untouched until the very last step, and if anything goes wrong nothing is changed.</span></span></label>' : '') +
+    '<div class="actions"><button class="btn primary" id="eSave">Save</button><button class="btn" data-close>Cancel</button></div>',
     (m, close) => {
       const q = s => m.querySelector(s);
       if(canWrite) q('#eWrite').checked = store.get('mp_writetags', false);
@@ -1709,26 +1710,26 @@ function openEdit(id){
             putCoverUrl(id, blob);
             t.hasCover = true; BK.dirtyCovers.add(id);
           }
-          t.title = q('#eTitle').value.trim() || parseName(t.fileName || '').title || 'بدون نام';
+          t.title = q('#eTitle').value.trim() || parseName(t.fileName || '').title || 'Untitled';
           t.artist = q('#eArtist').value.trim();
           t.album = q('#eAlbum').value.trim();
           await dbPut('tracks', t);
           const doWrite = canWrite && q('#eWrite').checked;
           if(canWrite) store.set('mp_writetags', doWrite);
-          let fileCover;                                  // undefined = بدون تغییر
+          let fileCover;                                  // undefined = unchanged
           if(doWrite && newCover === null) fileCover = null;
           else if(doWrite && newCover) fileCover = new Uint8Array(await (await resizeCover(newCover, 600)).arrayBuffer());
           close(); renderAll();
           if(S.curId === id) updateNowPlaying();
           if(doWrite){
-            toast('در حال نوشتن روی فایل MP3…', true);
+            toast('Writing to the MP3 file…', true);
             try{
               await writeTagsSafely(t, {title: t.title, artist: t.artist, album: t.album, cover: fileCover});
               await dbPut('tracks', t); updateStorage();
-              toast('ذخیره شد و روی خود فایل هم نوشته شد');
-            }catch(e){ console.error(e); toast('داخل برنامه ذخیره شد ولی نوشتن روی فایل انجام نشد (فایل دست‌نخورده ماند): ' + ((e && e.message) || e), false, 9000); }
-          } else toast('ذخیره شد');
-        }catch(e){ console.error(e); toast('ذخیره نشد: ' + (e && e.message || 'خطا')); }
+              toast('Saved, and written to the file too');
+            }catch(e){ console.error(e); toast('Saved in the app, but writing to the file failed (the file was left untouched): ' + ((e && e.message) || e), false, 9000); }
+          } else toast('Saved');
+        }catch(e){ console.error(e); toast('Not saved: ' + (e && e.message || 'error')); }
       };
     },
     () => { if(tmpUrl) URL.revokeObjectURL(tmpUrl); });
@@ -1746,11 +1747,11 @@ function openAddToPlaylist(trackId){
   const draw = m => {
     m.querySelector('#plPick').innerHTML = S.playlists.length
       ? S.playlists.map(p => '<label class="pick"><input type="checkbox" data-pl="' + p.id + '"' + (p.trackIds.includes(trackId) ? ' checked' : '') + '><span dir="auto">' + esc(p.name) + '</span><small>' + p.trackIds.length + '</small></label>').join('')
-      : '<div class="muted pad">هنوز پلی‌لیستی ندارید. از پایین یکی بسازید.</div>';
+      : '<div class="muted pad">You have no playlists yet. Create one below.</div>';
   };
-  openModal('<h3>افزودن به پلی‌لیست</h3><div class="muted small" id="plFor" dir="auto"></div><div id="plPick" class="pick-list"></div>' +
-    '<div class="newpl"><input class="inp" id="plNew" dir="auto" maxlength="80" placeholder="نام پلی‌لیست جدید…"><button class="btn" id="plMake">ساخت و افزودن</button></div>' +
-    '<div class="actions"><button class="btn primary" data-close>تمام</button></div>',
+  openModal('<h3>Add to playlist</h3><div class="muted small" id="plFor" dir="auto"></div><div id="plPick" class="pick-list"></div>' +
+    '<div class="newpl"><input class="inp" id="plNew" dir="auto" maxlength="80" placeholder="New playlist name…"><button class="btn" id="plMake">Create and add</button></div>' +
+    '<div class="actions"><button class="btn primary" data-close>Done</button></div>',
     m => {
       m.querySelector('#plFor').textContent = t.title;
       draw(m);
@@ -1776,12 +1777,12 @@ function openAddToPlaylist(trackId){
 /* ================= adding / deleting tracks ================= */
 async function addFiles(files){
   const list = [...files].filter(f => (f.type || '').startsWith('audio/') || /\.(mp3|m4a|flac|wav|ogg|oga|opus|aac|webm|wma)$/i.test(f.name));
-  if(!list.length){ toast('فایل صوتی پیدا نشد'); return; }
+  if(!list.length){ toast('No audio files found'); return; }
   if(FOLDER) return addFilesToFolder(list);
   let ok = 0, fail = 0;
   for(let i = 0; i < list.length; i++){
     const f = list[i];
-    toast('در حال افزودن ' + (i + 1) + ' از ' + list.length + '…', true);
+    toast('Adding ' + (i + 1) + ' of ' + list.length + '…', true);
     try{
       if(!f.size) throw new Error('empty file');
       const tag = await readTags(f);
@@ -1790,7 +1791,7 @@ async function addFiles(files){
       let cover = null;
       if(tag.cover){ try{ cover = await resizeCover(tag.cover); }catch(e){ cover = null; } }
       const meta = {
-        title: tag.title || nm.title || 'بدون نام',
+        title: tag.title || nm.title || 'Untitled',
         artist: tag.artist || nm.artist || '',
         album: tag.album || '',
         duration: dur, added: Date.now(), fileName: f.name, size: f.size, hasCover: !!cover
@@ -1801,11 +1802,11 @@ async function addFiles(files){
       ok++;
     }catch(e){
       console.error(e); fail++;
-      if(e && e.name === 'QuotaExceededError'){ toast('فضای ذخیره‌سازی مرورگر پر شده است'); break; }
+      if(e && e.name === 'QuotaExceededError'){ toast('Browser storage is full'); break; }
     }
   }
   renderAll(); updateStorage();
-  toast(ok + ' آهنگ اضافه شد' + (fail ? ' · ' + fail + ' مورد ناموفق' : ''));
+  toast(plural(ok, 'song') + ' added' + (fail ? ' · ' + fail + ' failed' : ''));
 }
 async function removeTrackRecord(id){
   await dbDel(['tracks','audio','covers'], id);
@@ -1822,22 +1823,22 @@ async function removeTrackRecord(id){
 async function deleteTrack(id){
   const t = S.tracks.get(id); if(!t) return;
   const msg = FOLDER
-    ? '«' + t.title + '» حذف شود؟ فایل آهنگ به سطل بازیافت ویندوز منتقل می‌شود و از آنجا قابل برگرداندن است.'
-    : '«' + t.title + '» از کتابخانه و همهٔ پلی‌لیست‌ها حذف شود؟';
-  if(!await askConfirm(msg, 'حذف')) return;
+    ? 'Delete “' + t.title + '”? The file will be moved to the Windows Recycle Bin, where you can restore it.'
+    : 'Remove “' + t.title + '” from the library and all playlists?';
+  if(!await askConfirm(msg, 'Delete')) return;
   try{
     if(FOLDER && t.file){
-      // ویندوز فایلِ در حال پخش را قفل می‌کند؛ اول آزادش کن
+      // Windows locks the file that is playing; release it first
       if(S.curId === id){ stopPlayback(); audio.removeAttribute('src'); try{ audio.load(); }catch(e){} await sleep(200); }
       try{ if(await FS.exists(fullPath(t.file))) await TAURI.core.invoke('move_to_trash', {path: fullPath(t.file)}); }
-      catch(e){ console.error(e); toast('فایل به سطل بازیافت نرفت (شاید در برنامهٔ دیگری باز است): ' + ((e && e.message) || e), false, 7000); return; }
+      catch(e){ console.error(e); toast('Couldn\'t move the file to the Recycle Bin (it may be open in another app): ' + ((e && e.message) || e), false, 7000); return; }
     }
     await removeTrackRecord(id);
     renderAll(); updateStorage();
-  }catch(e){ console.error(e); toast('حذف نشد'); }
+  }catch(e){ console.error(e); toast('Delete failed'); }
 }
 
-/* ---------- حالت پوشه (برنامهٔ ویندوز) ---------- */
+/* ---------- folder mode (Windows app) ---------- */
 async function diskReader(path){
   const h = await FS.open(path, {read: true});
   return {
@@ -1863,7 +1864,7 @@ async function listDisk(dir, rel, depth, out){
     else if(e.isFile && AUDIO_RE.test(e.name)) out.push(r);
   }
 }
-// فایلی را که در پوشه هست وارد کتابخانه می‌کند. fileObj فقط وقتی هست که همین الان از بیرون کپی شده.
+// imports a file that is in the folder into the library. fileObj is only set when it was just copied in from outside.
 async function importDiskFile(rel, fileObj){
   const path = fullPath(rel);
   const name = rel.split('/').pop();
@@ -1872,7 +1873,7 @@ async function importDiskFile(rel, fileObj){
   else {
     const s1 = await FS.stat(path);
     if(!s1.size) return false;
-    // فایلی که چند ثانیه پیش نوشته شده شاید هنوز در حال کپی باشد
+    // a file written a few seconds ago may still be copying
     if(s1.mtime && Date.now() - s1.mtime.getTime() < 5000){
       await sleep(600);
       const s2 = await FS.stat(path);
@@ -1891,7 +1892,7 @@ async function importDiskFile(rel, fileObj){
   let cover = null;
   if(tag.cover){ try{ cover = await resizeCover(tag.cover); }catch(e){ cover = null; } }
   const meta = {
-    title: tag.title || nm.title || 'بدون نام', artist: tag.artist || nm.artist || '', album: tag.album || '',
+    title: tag.title || nm.title || 'Untitled', artist: tag.artist || nm.artist || '', album: tag.album || '',
     duration: dur, added: Date.now(), fileName: name, file: rel, size, hasCover: !!cover
   };
   meta.id = await dbAddTrack(meta, null, cover);
@@ -1901,7 +1902,7 @@ async function importDiskFile(rel, fileObj){
 }
 let scanning = false;
 function setRefreshBusy(b){ const el = $('#btnRefresh'); el.disabled = b; el.classList.toggle('spin', b); }
-// پوشه را می‌خواند: آهنگ‌های تازه را اضافه و آهنگ‌هایی را که فایلشان دیگر نیست حذف می‌کند
+// reads the folder: adds new songs and removes songs whose file no longer exists
 async function scanFolder(manual){
   if(!FOLDER || scanning) return;
   scanning = true; setRefreshBusy(true);
@@ -1913,8 +1914,8 @@ async function scanFolder(manual){
     const withFile = [...S.tracks.values()].filter(t => t.file);
     let doRemove = true;
     if(!files.length && withFile.length){
-      // پوشهٔ خالی: شاید پوشه پاک یا عوض شده؛ بی‌اجازه کتابخانه را خالی نکن
-      doRemove = manual && await askConfirm('پوشهٔ آهنگ‌ها خالی است. همهٔ آهنگ‌های کتابخانه (و جای آن‌ها در پلی‌لیست‌ها) حذف شوند؟', 'حذف');
+      // empty folder: it may have been deleted or changed; do not empty the library without asking
+      doRemove = manual && await askConfirm('The music folder is empty. Remove all songs from the library (and from playlists)?', 'Delete');
     }
     const known = new Set();
     for(const t of withFile){
@@ -1923,24 +1924,24 @@ async function scanFolder(manual){
     }
     const fresh = files.filter(r => !known.has(r));
     for(let i = 0; i < fresh.length; i++){
-      if(manual || fresh.length > 3) toast('در حال افزودن ' + (i + 1) + ' از ' + fresh.length + '…', true);
+      if(manual || fresh.length > 3) toast('Adding ' + (i + 1) + ' of ' + fresh.length + '…', true);
       try{ if(await importDiskFile(fresh[i])) added++; else pending++; }
       catch(e){ console.warn('import failed', fresh[i], e); pending++; }
     }
   }catch(e){
     console.error(e);
-    toast('خواندن پوشهٔ آهنگ‌ها ممکن نشد: ' + ((e && e.message) || e), false, 7000);
+    toast('Couldn\'t read the music folder: ' + ((e && e.message) || e), false, 7000);
     return;
   }finally{
     scanning = false; setRefreshBusy(false);
   }
   renderAll(); updateStorage();
   const parts = [];
-  if(added) parts.push(added + ' آهنگ جدید اضافه شد');
-  if(removed) parts.push(removed + ' آهنگ که فایلش دیگر در پوشه نبود حذف شد');
-  if(pending) parts.push(pending + ' فایل هنوز آماده نیست؛ چند لحظه بعد دوباره رفرش کن');
+  if(added) parts.push(plural(added, 'new song') + ' added');
+  if(removed) parts.push(plural(removed, 'song') + ' removed (file no longer in the folder)');
+  if(pending) parts.push(plural(pending, 'file') + ' not ready yet; refresh again in a moment');
   if(parts.length) toast(parts.join(' · '), false, 5000);
-  else if(manual) toast('آهنگ جدیدی در پوشه پیدا نشد');
+  else if(manual) toast('No new songs found in the folder');
   else $('#toast').classList.remove('show');
 }
 async function uniqueName(name){
@@ -1956,7 +1957,7 @@ async function addFilesToFolder(list){
   let ok = 0, fail = 0;
   for(let i = 0; i < list.length; i++){
     const f = list[i];
-    toast('در حال افزودن ' + (i + 1) + ' از ' + list.length + '…', true);
+    toast('Adding ' + (i + 1) + ' of ' + list.length + '…', true);
     let rel = null;
     try{
       if(!f.size) throw new Error('empty file');
@@ -1970,11 +1971,11 @@ async function addFilesToFolder(list){
     }
   }
   renderAll(); updateStorage();
-  toast(ok + ' آهنگ به پوشه اضافه شد' + (fail ? ' · ' + fail + ' مورد ناموفق' : ''));
+  toast(plural(ok, 'song') + ' added to the folder' + (fail ? ' · ' + fail + ' failed' : ''));
 }
 async function openMusicFolder(){
   try{ await TAURI.opener.openPath(MUSIC_DIR); }
-  catch(e){ console.error(e); toast('باز کردن پوشه ممکن نشد. مسیر: ' + MUSIC_DIR, false, 8000); }
+  catch(e){ console.error(e); toast('Couldn\'t open the folder. Path: ' + MUSIC_DIR, false, 8000); }
 }
 
 /* ================= events ================= */
@@ -1983,7 +1984,7 @@ document.addEventListener('click', e => {
   if(nav){ const v = nav.dataset.view; setView(/^\d+$/.test(v) ? Number(v) : v); }
 });
 $('#btnNewPl').addEventListener('click', async () => {
-  const name = await askText('نام پلی‌لیست جدید', '', 'ساخت');
+  const name = await askText('New playlist name', '', 'Create');
   if(!name) return;
   const p = await createPlaylist(name);
   setView(p.id);
@@ -1992,10 +1993,10 @@ $('#plActions').addEventListener('click', async e => {
   const b = e.target.closest('button'); if(!b) return;
   const p = getPl(S.view); if(!p) return;
   if(b.dataset.pa === 'rename'){
-    const name = await askText('نام پلی‌لیست', p.name, 'ذخیره');
+    const name = await askText('Playlist name', p.name, 'Save');
     if(name){ p.name = name; await dbPut('playlists', p); renderAll(); }
   } else if(b.dataset.pa === 'del'){
-    if(await askConfirm('پلی‌لیست «' + p.name + '» حذف شود؟ (آهنگ‌ها در کتابخانه می‌مانند)', 'حذف')){
+    if(await askConfirm('Delete playlist “' + p.name + '”? (The songs stay in your library.)', 'Delete')){
       await dbDel('playlists', p.id);
       S.playlists = S.playlists.filter(x => x.id !== p.id);
       setView('all');
@@ -2052,45 +2053,45 @@ async function updateStorage(){
   const box = $('#storageInfo');
   if(FOLDER){
     let total = 0; for(const t of S.tracks.values()) total += t.size || 0;
-    const sz = total >= 1073741824 ? (total / 1073741824).toFixed(2) + ' گیگابایت' : Math.round(total / 1048576) + ' مگابایت';
-    box.innerHTML = 'پوشهٔ آهنگ‌ها (' + sz + '):<span class="path">' + esc(MUSIC_DIR) + '</span>';
+    const sz = total >= 1073741824 ? (total / 1073741824).toFixed(2) + ' GB' : Math.round(total / 1048576) + ' MB';
+    box.innerHTML = 'Music folder (' + sz + '):<span class="path">' + esc(MUSIC_DIR) + '</span>';
     return;
   }
   try{
     const est = await navigator.storage.estimate();
-    const mb = x => (x / 1048576 >= 1024 ? (x / 1073741824).toFixed(2) + ' گیگابایت' : Math.round(x / 1048576) + ' مگابایت');
-    box.innerHTML = 'فضای مصرفی: ' + mb(est.usage || 0) + '<br>آهنگ‌ها فقط در همین مرورگر ذخیره می‌شوند.';
-  }catch(e){ box.textContent = 'آهنگ‌ها فقط در همین مرورگر ذخیره می‌شوند.'; }
+    const mb = x => (x / 1048576 >= 1024 ? (x / 1073741824).toFixed(2) + ' GB' : Math.round(x / 1048576) + ' MB');
+    box.innerHTML = 'Storage used: ' + mb(est.usage || 0) + '<br>Songs are stored only in this browser.';
+  }catch(e){ box.textContent = 'Songs are stored only in this browser.'; }
 }
 
-/* ================= app updater (فقط داخل برنامهٔ ویندوز) ================= */
+/* ================= app updater (Windows app only) ================= */
 let pendingUpdate = null, updBusy = false;
 function showUpd(html, cls){ const b = $('#updBar'); b.className = 'upd ' + (cls || ''); b.innerHTML = html; }
 function hideUpd(){ $('#updBar').className = 'upd hidden'; }
 async function checkUpdate(manual){
   if(!IS_APP || updBusy) return;
   const btn = $('#btnChkUpd');
-  if(manual){ btn.disabled = true; btn.textContent = 'در حال بررسی…'; }
+  if(manual){ btn.disabled = true; btn.textContent = 'Checking…'; }
   try{
     const u = await TAURI.updater.check();
     if(u){
       pendingUpdate = u;
-      showUpd('<span>نسخهٔ جدید <b dir="ltr">' + esc(u.version) + '</b> آماده است.</span><span class="grow"></span><button class="btn primary sm" id="btnDoUpd">آپدیت</button><button class="btn sm" id="btnLaterUpd">بعداً</button>');
+      showUpd('<span>New version <b dir="ltr">' + esc(u.version) + '</b> is ready.</span><span class="grow"></span><button class="btn primary sm" id="btnDoUpd">Update</button><button class="btn sm" id="btnLaterUpd">Later</button>');
       $('#btnDoUpd').onclick = doUpdate;
       $('#btnLaterUpd').onclick = hideUpd;
-    } else if(manual){ toast('برنامه آخرین نسخه را دارد'); }
+    } else if(manual){ toast('You have the latest version'); }
   }catch(e){
     console.warn('update check failed', e);
-    if(manual) toast('بررسی آپدیت نشد: ' + ((e && e.message) || e), false, 6000);
+    if(manual) toast('Update check failed: ' + ((e && e.message) || e), false, 6000);
   }finally{
-    if(manual){ btn.disabled = false; btn.textContent = 'بررسی آپدیت'; }
+    if(manual){ btn.disabled = false; btn.textContent = 'Check for updates'; }
   }
 }
 async function doUpdate(){
   if(!pendingUpdate || updBusy) return;
   updBusy = true;
   let total = 0, got = 0;
-  showUpd('<span>در حال دانلود آپدیت…</span><div class="upd-prog"><i id="updFill"></i></div><span id="updPct" dir="ltr">0%</span>');
+  showUpd('<span>Downloading update…</span><div class="upd-prog"><i id="updFill"></i></div><span id="updPct" dir="ltr">0%</span>');
   try{
     await pendingUpdate.downloadAndInstall(ev => {
       if(ev.event === 'Started') total = ev.data.contentLength || 0;
@@ -2103,13 +2104,13 @@ async function doUpdate(){
           if(t) t.textContent = p + '%';
         }
       }
-      else if(ev.event === 'Finished') showUpd('<span>در حال نصب… برنامه خودش دوباره باز می‌شود.</span>');
+      else if(ev.event === 'Finished') showUpd('<span>Installing… the app will restart by itself.</span>');
     });
     try{ await TAURI.process.relaunch(); }catch(e){ console.warn(e); }
   }catch(e){
     console.warn('update failed', e);
     updBusy = false;
-    showUpd('<span>آپدیت انجام نشد: ' + esc((e && e.message) || e) + '</span><span class="grow"></span><button class="btn sm" id="btnRetryUpd">تلاش دوباره</button>', 'err');
+    showUpd('<span>Update failed: ' + esc((e && e.message) || e) + '</span><span class="grow"></span><button class="btn sm" id="btnRetryUpd">Try again</button>', 'err');
     $('#btnRetryUpd').onclick = doUpdate;
   }
 }
@@ -2122,22 +2123,22 @@ async function initUpdater(){
   setInterval(() => checkUpdate(false), 6 * 3600 * 1000);
 }
 
-/* ================= ظاهر و رنگ‌ها ================= */
+/* ================= Appearance ================= */
 const THEME_KEYS = [
-  ['accent', 'رنگ اصلی', 'دکمه‌ها، نوار پیشرفت و موارد برجسته'],
-  ['bg', 'رنگ پس‌زمینه', 'زمینهٔ اصلی برنامه'],
-  ['panel', 'رنگ پنل‌ها', 'منوی کناری و نوار پخش پایین'],
-  ['text', 'رنگ متن', 'نوشته‌ها و آیکون‌ها'],
-  ['play', 'رنگ دکمهٔ پخش', 'دایرهٔ پخش و توقف']
+  ['accent', 'Accent color', 'Buttons, progress bar and highlights'],
+  ['bg', 'Background', 'Main app background'],
+  ['panel', 'Panels', 'Sidebar and bottom player bar'],
+  ['text', 'Text', 'Text and icons'],
+  ['play', 'Play button', 'The play / pause circle']
 ];
 const THEMES = [
-  {name:'بنفش شب', v:{accent:'#7c5cff', bg:'#0e1014', panel:'#161920', text:'#e9ebf1', play:'#ffffff'}},
-  {name:'آبی اقیانوس', v:{accent:'#2f8cff', bg:'#0a111e', panel:'#111b2e', text:'#e6eefc', play:'#ffffff'}},
-  {name:'سبز جنگل', v:{accent:'#2ecc71', bg:'#0b130e', panel:'#12201a', text:'#e5f4ea', play:'#ffffff'}},
-  {name:'نارنجی آتش', v:{accent:'#ff7a2f', bg:'#140e0b', panel:'#211611', text:'#f6ebe3', play:'#ffffff'}},
-  {name:'صورتی', v:{accent:'#ff4d9d', bg:'#140b11', panel:'#211119', text:'#f8e8f0', play:'#ffffff'}},
-  {name:'سیاه کامل', v:{accent:'#e5e5e5', bg:'#000000', panel:'#0d0d0d', text:'#f2f2f2', play:'#e5e5e5'}},
-  {name:'روشن', v:{accent:'#6a4cff', bg:'#f3f4f8', panel:'#ffffff', text:'#1b1e27', play:'#1b1e27'}}
+  {name:'Night violet', v:{accent:'#7c5cff', bg:'#0e1014', panel:'#161920', text:'#e9ebf1', play:'#ffffff'}},
+  {name:'Ocean blue', v:{accent:'#2f8cff', bg:'#0a111e', panel:'#111b2e', text:'#e6eefc', play:'#ffffff'}},
+  {name:'Forest green', v:{accent:'#2ecc71', bg:'#0b130e', panel:'#12201a', text:'#e5f4ea', play:'#ffffff'}},
+  {name:'Fire orange', v:{accent:'#ff7a2f', bg:'#140e0b', panel:'#211611', text:'#f6ebe3', play:'#ffffff'}},
+  {name:'Pink', v:{accent:'#ff4d9d', bg:'#140b11', panel:'#211119', text:'#f8e8f0', play:'#ffffff'}},
+  {name:'Pure black', v:{accent:'#e5e5e5', bg:'#000000', panel:'#0d0d0d', text:'#f2f2f2', play:'#e5e5e5'}},
+  {name:'Light', v:{accent:'#6a4cff', bg:'#f3f4f8', panel:'#ffffff', text:'#1b1e27', play:'#1b1e27'}}
 ];
 const HEX_RE = /^#[0-9a-f]{6}$/i;
 function loadTheme(){
@@ -2161,8 +2162,8 @@ function applyTheme(){
 applyTheme();
 function openTheme(){
   const same = v => THEME_KEYS.every(([k]) => theme[k].toLowerCase() === v[k].toLowerCase());
-  openModal('<h3>ظاهر و رنگ‌ها</h3><div class="presets" id="thPresets"></div><div id="thRows"></div>' +
-    '<div class="actions"><button class="btn primary" data-close>تمام</button><button class="btn" id="thReset">بازنشانی به پیش‌فرض</button></div>',
+  openModal('<h3>Appearance</h3><div class="presets" id="thPresets"></div><div id="thRows"></div>' +
+    '<div class="actions"><button class="btn primary" data-close>Done</button><button class="btn" id="thReset">Reset to default</button></div>',
     m => {
       const drawPresets = () => {
         m.querySelector('#thPresets').innerHTML = THEMES.map((t, i) =>
@@ -2196,12 +2197,12 @@ function openTheme(){
       SEP = TAURI.path.sep();
       MUSIC_DIR = base.replace(/[\\/]+$/, '') + SEP + 'Music';
       await FS.mkdir(MUSIC_DIR, {recursive: true});
-      audio.crossOrigin = 'anonymous';   // لازم برای افکت سرعت و پیچ روی آدرس asset
+      audio.crossOrigin = 'anonymous';   // required for the speed and pitch effect on the asset URL
       FOLDER = true;
       DATA_DIR = base.replace(/[\\/]+$/, '') + SEP + 'data';
       try{ await FS.mkdir(DATA_DIR + SEP + 'covers', {recursive: true}); }catch(e){ console.warn('data dir', e); }
       $('#btnRefresh').classList.remove('hidden'); $('#btnOpenDir').classList.remove('hidden'); $('#btnBackup').classList.remove('hidden');
-    }catch(e){ console.error(e); toast('ساخت پوشهٔ آهنگ‌ها ممکن نشد: ' + ((e && e.message) || e), false, 9000); }
+    }catch(e){ console.error(e); toast('Couldn\'t create the music folder: ' + ((e && e.message) || e), false, 9000); }
   }
   document.querySelectorAll('[data-icon]').forEach(n => { n.innerHTML = icon(n.dataset.icon, n.classList.contains('fillicon') ? 'fill' : ''); });
   S.sort = store.get('mp_sort', 'new'); $('#sortSel').value = S.sort;
@@ -2218,7 +2219,7 @@ function openTheme(){
   initUpdater();
   try{ db = await openDB(); }
   catch(e){
-    $('#list').innerHTML = '<div class="empty"><div>ذخیره‌سازی مرورگر در دسترس نیست.<br>فایل را مستقیم در Chrome یا Edge باز کنید (نه در حالت ناشناس).</div></div>';
+    $('#list').innerHTML = '<div class="empty"><div>Browser storage is not available.<br>Open the file directly in Chrome or Edge (not in a private window).</div></div>';
     return;
   }
   try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist(); }catch(e){}
@@ -2226,8 +2227,8 @@ function openTheme(){
     const [tracks, pls] = await Promise.all([dbGetAll('tracks'), dbGetAll('playlists')]);
     tracks.forEach(t => S.tracks.set(t.id, t));
     S.playlists = pls;
-  }catch(e){ console.error(e); toast('خواندن کتابخانه با مشکل روبه‌رو شد'); }
-  // داده‌های برنامه خالی است ولی پشتیبان هست؟ بعد از خواندن پوشه، پشتیبان روی آهنگ‌ها اعمال می‌شود
+  }catch(e){ console.error(e); toast('There was a problem reading the library'); }
+  // app data is empty but a backup exists? After reading the folder, the backup is applied to the songs
   let lib = null;
   if(FOLDER && !S.tracks.size && !S.playlists.length) lib = await loadLibraryFile();
   BK.hold = !!(lib && (lib.error || (lib.tracks && lib.tracks.length)));
@@ -2235,21 +2236,21 @@ function openTheme(){
   renderAll(); updateStorage();
   if(FOLDER){
     await restoreResume();
-    await scanFolder(false);   // آهنگ‌هایی که دستی در پوشه گذاشته‌ای
+    await scanFolder(false);   // songs you put into the folder by hand
     if(lib && !lib.error){
       try{
         const r = await applyLibrary(lib, {settings: true});
         renderAll(); updateNowPlaying();
-        toast('پشتیبان بازیابی شد: ' + r.tracks + ' آهنگ و ' + r.playlists + ' پلی‌لیست', false, 6000);
-      }catch(e){ console.error(e); toast('بازیابی پشتیبان ناموفق بود'); }
-    } else if(lib && lib.error) toast('فایل پشتیبان خراب بود و نادیده گرفته شد؛ نسخهٔ قبلی کنارش به نام library.prev.json می‌ماند', false, 8000);
+        toast('Backup restored: ' + r.tracks + ' songs and ' + r.playlists + ' playlists', false, 6000);
+      }catch(e){ console.error(e); toast('Backup restore failed'); }
+    } else if(lib && lib.error) toast('The backup file was corrupted and ignored; the previous copy is kept next to it as library.prev.json', false, 8000);
     BK.ready = true;
     let has = true; try{ has = await FS.exists(libPath()); }catch(e){}
     if(BK.dirty || !has) scheduleBackup();
   }
 })();
 
-/* ---------- ادامهٔ پخش از جایی که بسته شد (بدون پخش خودکار) ---------- */
+/* ---------- resume from where the app was closed (no autoplay) ---------- */
 async function restoreResume(){
   const r = store.get('mp_resume', null);
   if(!FOLDER || !r || !r.file) return;

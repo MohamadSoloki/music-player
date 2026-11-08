@@ -1,14 +1,14 @@
 use std::path::{Path, PathBuf};
 use tauri::Manager;
 
-/// آیا `path` واقعاً یک فایل داخل پوشهٔ `base` است؟ (با حل کردن `..` و لینک‌ها)
+/// Is `path` really inside the `base` folder? (resolves `..` and links)
 fn is_inside(base: &Path, path: &Path) -> Result<bool, String> {
     let base = base.canonicalize().map_err(|e| e.to_string())?;
     let real = path.canonicalize().map_err(|e| e.to_string())?;
     Ok(real != base && real.starts_with(&base))
 }
 
-/// فایل را به سطل بازیافت ویندوز می‌برد. فقط فایل‌های داخل پوشهٔ آهنگ‌ها مجازند.
+/// Moves a file to the Windows Recycle Bin. Only files inside the music folder are allowed.
 #[tauri::command]
 async fn move_to_trash(app: tauri::AppHandle, path: String) -> Result<(), String> {
     let music = app
@@ -30,15 +30,15 @@ async fn move_to_trash(app: tauri::AppHandle, path: String) -> Result<(), String
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        // آپدیت خودکار: بررسی نسخهٔ جدید، دانلود، نصب
+        // Auto-update: check for a new version, download, install
         .plugin(tauri_plugin_updater::Builder::new().build())
-        // راه‌اندازی دوبارهٔ برنامه بعد از آپدیت
+        // Restart the app after an update
         .plugin(tauri_plugin_process::init())
-        // خواندن/نوشتن پوشهٔ آهنگ‌ها
+        // Read/write the music folder
         .plugin(tauri_plugin_fs::init())
-        // باز کردن پوشهٔ آهنگ‌ها در Explorer
+        // Open the music folder in Explorer
         .plugin(tauri_plugin_opener::init())
-        // انتقال فایل آهنگ به سطل بازیافت
+        // Move a song file to the Recycle Bin
         .invoke_handler(tauri::generate_handler![move_to_trash])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -77,7 +77,7 @@ mod tests {
         assert!(!is_inside(&m, &d.join("secret.txt")).unwrap());
         assert!(!is_inside(&m, &m.join("..").join("secret.txt")).unwrap());
         assert!(!is_inside(&m, &m).unwrap());
-        // پوشهٔ هم‌نام‌پیشوند (Music2) نباید داخل Music حساب شود
+        // A folder with the same prefix (Music2) must not count as inside Music
         let m2 = d.join("Music2");
         fs::create_dir_all(&m2).unwrap();
         fs::write(m2.join("c.mp3"), b"x").unwrap();

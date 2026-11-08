@@ -1,13 +1,13 @@
 name: Release
 
-# دو راه برای ساخت نسخهٔ جدید:
-# 1) تب Actions > Release > Run workflow و نوشتن شمارهٔ نسخه (مثلاً 0.1.1)
-# 2) ساختن tag به شکل v0.1.1
+# Two ways to build a new version:
+# 1) Actions tab > Release > Run workflow, then type the version number (e.g. 0.1.1)
+# 2) Create a tag like v0.1.1
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "شمارهٔ نسخه، مثلاً 0.1.1 (باید از نسخهٔ قبلی بزرگ‌تر باشد)"
+        description: "Version number, e.g. 0.1.1 (must be higher than the previous version)"
         required: true
   push:
     tags:
@@ -62,7 +62,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         with:
           tagName: v${{ steps.ver.outputs.version }}
-          releaseName: "موزیک پلیر v${{ steps.ver.outputs.version }}"
-          releaseBody: "نسخهٔ ${{ steps.ver.outputs.version }}. فایل setup.exe را برای نصب دانلود کنید؛ نسخه‌های نصب‌شده خودشان آپدیت را پیشنهاد می‌دهند."
+          releaseName: "My Music Player v${{ steps.ver.outputs.version }}"
+          releaseBody: "Version ${{ steps.ver.outputs.version }}. Download the setup.exe file to install; installed versions offer the update by themselves."
           releaseDraft: false
           prerelease: false
