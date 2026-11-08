@@ -1775,16 +1775,53 @@ function openAddToPlaylist(trackId){
 }
 
 /* ================= adding / deleting tracks ================= */
+/* ---- duplicate detection: a file with the same size and the same bytes as a song already in the library ---- */
+async function sameContent(f, rd){
+  const CH = 1 << 20;
+  for(let pos = 0; pos < f.size; pos += CH){
+    const len = Math.min(CH, f.size - pos);
+    const [a, b] = await Promise.all([f.slice(pos, pos + len).arrayBuffer().then(x => new Uint8Array(x)), rd(pos, len)]);
+    if(a.length !== b.length) return false;
+    for(let i = 0; i < a.length; i++) if(a[i] !== b[i]) return false;
+  }
+  return true;
+}
+async function findDuplicate(f){
+  for(const t of S.tracks.values()){
+    if(!f.size || t.size !== f.size) continue;
+    try{
+      if(FOLDER){
+        if(!t.file) continue;
+        const r = await diskReader(fullPath(t.file));
+        try{ if(await sameContent(f, r.rangeReader)) return t; } finally{ try{ await r.close(); }catch(e){} }
+      } else {
+        const b = await dbGet('audio', t.id); if(!b) continue;
+        if(await sameContent(f, async (st, l) => new Uint8Array(await b.slice(st, st + l).arrayBuffer()))) return t;
+      }
+    }catch(e){ console.warn('duplicate check failed', t.file || t.id, e); }
+  }
+  return null;
+}
+function dupMessage(ok, fail, dups, where){
+  const parts = [];
+  if(ok) parts.push(plural(ok, 'song') + ' added' + where);
+  if(dups.length > 1 && !ok && !fail) return 'Duplicate songs: all ' + dups.length + ' files are already in your library, so none were added.';
+  if(dups.length === 1 && !ok && !fail) return 'Duplicate song: “' + dups[0] + '” is already in your library, so it was not added.';
+  if(dups.length) parts.push(plural(dups.length, 'duplicate') + ' skipped (already in your library)');
+  if(fail) parts.push(fail + ' failed');
+  return (dups.length && !ok ? 'Duplicate songs: ' : '') + parts.join(' · ');
+}
 async function addFiles(files){
   const list = [...files].filter(f => (f.type || '').startsWith('audio/') || /\.(mp3|m4a|flac|wav|ogg|oga|opus|aac|webm|wma)$/i.test(f.name));
   if(!list.length){ toast('No audio files found'); return; }
   if(FOLDER) return addFilesToFolder(list);
-  let ok = 0, fail = 0;
+  let ok = 0, fail = 0; const dups = [];
   for(let i = 0; i < list.length; i++){
     const f = list[i];
     toast('Adding ' + (i + 1) + ' of ' + list.length + '…', true);
     try{
       if(!f.size) throw new Error('empty file');
+      if(await findDuplicate(f)){ dups.push(f.name); continue; }
       const tag = await readTags(f);
       const nm = parseName(f.name);
       const dur = await getDuration(f);
@@ -1806,7 +1843,7 @@ async function addFiles(files){
     }
   }
   renderAll(); updateStorage();
-  toast(plural(ok, 'song') + ' added' + (fail ? ' · ' + fail + ' failed' : ''));
+  toast(dupMessage(ok, fail, dups, ''), false, dups.length ? 7000 : 2600);
 }
 async function removeTrackRecord(id){
   await dbDel(['tracks','audio','covers'], id);
@@ -1954,13 +1991,14 @@ async function uniqueName(name){
   return n;
 }
 async function addFilesToFolder(list){
-  let ok = 0, fail = 0;
+  let ok = 0, fail = 0; const dups = [];
   for(let i = 0; i < list.length; i++){
     const f = list[i];
     toast('Adding ' + (i + 1) + ' of ' + list.length + '…', true);
     let rel = null;
     try{
       if(!f.size) throw new Error('empty file');
+      if(await findDuplicate(f)){ dups.push(f.name); continue; }   // never copied into the folder
       rel = await uniqueName(f.name);
       await FS.writeFile(fullPath(rel), f.stream());
       await importDiskFile(rel, f);
@@ -1971,7 +2009,7 @@ async function addFilesToFolder(list){
     }
   }
   renderAll(); updateStorage();
-  toast(plural(ok, 'song') + ' added to the folder' + (fail ? ' · ' + fail + ' failed' : ''));
+  toast(dupMessage(ok, fail, dups, ' to the folder'), false, dups.length ? 7000 : 2600);
 }
 async function openMusicFolder(){
   try{ await TAURI.opener.openPath(MUSIC_DIR); }
