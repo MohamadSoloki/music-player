@@ -29,7 +29,20 @@ async fn move_to_trash(app: tauri::AppHandle, path: String) -> Result<(), String
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default();
+    // Single instance (must be the first plugin): launching the app again brings the
+    // existing window to the front instead of opening a second one.
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(w) = app.get_webview_window("main") {
+                let _ = w.unminimize();
+                let _ = w.show();
+                let _ = w.set_focus();
+            }
+        }));
+    }
+    builder
         // Auto-update: check for a new version, download, install
         .plugin(tauri_plugin_updater::Builder::new().build())
         // Restart the app after an update
