@@ -171,6 +171,11 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
 .qrow .qb{display:flex;gap:2px}
 .qrow .qb button{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;color:var(--muted)}
 .qrow .qb button:hover{background:var(--line);color:var(--text)}
+.qrow.qdrag{cursor:grab}
+.qrow .grip{color:var(--muted);flex:none;opacity:.7}
+.qrow.dragging{opacity:.35}
+.qrow.drop-before{box-shadow:inset 0 3px 0 var(--accent)}
+.qrow.drop-after{box-shadow:inset 0 -3px 0 var(--accent)}
 .qh{color:var(--muted);font-size:12px;margin:12px 0 4px}
 .bk-info{padding:10px;border-radius:10px;background:var(--panel2);line-height:1.9;margin-bottom:6px}
 
@@ -410,6 +415,7 @@ const ICONS = {
   search:'<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
   list:'<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>',
   minus:'<line x1="5" y1="12" x2="19" y2="12"/>',
+  grip:'<circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/>',
   refresh:'<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
   folder:'<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
   palette:'<circle cx="13.5" cy="6.5" r="1"/><circle cx="17.5" cy="10.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/><circle cx="6.5" cy="12.5" r="1"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>'
@@ -1380,19 +1386,30 @@ $('#npFav').addEventListener('click', () => { if(S.curId != null) toggleFav(S.cu
 function syncQueueBadge(){
   const b = $('#qBadge'); b.classList.toggle('hidden', !S.upNext.length); b.textContent = S.upNext.length;
 }
+const inQueue = id => S.upNext.includes(id);
+// a song can be in the queue only once: "play next" on a queued song just moves it to the front
 function enqueue(id, front){
   if(!S.tracks.has(id)) return;
   if(S.curId == null && !S.queue.length){ playList([id], id); return; }
+  const had = inQueue(id);
+  if(had && !front){ toast('Already in the queue'); return; }
+  if(had) S.upNext = S.upNext.filter(x => x !== id);
   if(front) S.upNext.unshift(id); else S.upNext.push(id);
   syncQueueBadge(); refreshQueueModal();
-  toast(front ? 'Will play next' : 'Added to queue');
+  toast(front ? (had ? 'Moved to play next' : 'Will play next') : 'Added to queue');
+}
+function dequeue(id){
+  if(!inQueue(id)) return;
+  S.upNext = S.upNext.filter(x => x !== id);
+  syncQueueBadge(); refreshQueueModal();
+  toast('Removed from the queue');
 }
 let queueRefresh = null;
 function refreshQueueModal(){ if(queueRefresh) queueRefresh(); }
 function openQueue(){
   openModal('<h3>Play queue</h3><div id="qBody"></div><div class="actions"><button class="btn danger" id="qClear">Clear queue</button><button class="btn primary" data-close>Close</button></div>',
     m => {
-      const row = (t, i) => '<div class="qrow">' + coverHtml(t) + '<div class="qt"><div dir="auto">' + esc(t.title) + '</div><div class="a" dir="auto">' + esc(t.artist || 'Unknown artist') + '</div></div>' +
+      const row = (t, i) => '<div class="qrow' + (i >= 0 ? ' qdrag' : '') + '"' + (i >= 0 ? ' draggable="true" data-i="' + i + '"' : '') + '>' + (i >= 0 ? '<span class="grip" title="Drag to reorder">' + icon('grip') + '</span>' : '') + coverHtml(t) + '<div class="qt"><div dir="auto">' + esc(t.title) + '</div><div class="a" dir="auto">' + esc(t.artist || 'Unknown artist') + '</div></div>' +
         (i >= 0 ? '<div class="qb"><button data-q="up" data-i="' + i + '" title="Up">' + icon('up') + '</button><button data-q="down" data-i="' + i + '" title="Down">' + icon('down') + '</button><button data-q="rm" data-i="' + i + '" title="Remove from queue">' + icon('x') + '</button></div>' : '') + '</div>';
       const draw = () => {
         const cur = S.tracks.get(S.curId);
@@ -1415,6 +1432,36 @@ function openQueue(){
         else if(b.dataset.q === 'down' && i < q.length - 1) [q[i + 1], q[i]] = [q[i], q[i + 1]];
         syncQueueBadge(); draw();
       });
+      // drag with the mouse to reorder
+      const body = m.querySelector('#qBody'); let qd = null;
+      const clearMarks = () => body.querySelectorAll('.drop-before,.drop-after,.dragging').forEach(r => r.classList.remove('drop-before', 'drop-after', 'dragging'));
+      body.addEventListener('dragstart', e => {
+        const r = e.target.closest && e.target.closest('.qdrag'); if(!r) return;
+        qd = +r.dataset.i; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', 'queue:' + qd);
+        r.classList.add('dragging');
+      });
+      body.addEventListener('dragover', e => {
+        if(qd == null) return;
+        e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+        body.querySelectorAll('.drop-before,.drop-after').forEach(r => r.classList.remove('drop-before', 'drop-after'));
+        const r = e.target.closest('.qdrag');
+        if(r && +r.dataset.i !== qd){ const b = r.getBoundingClientRect(); r.classList.add(e.clientY > b.top + b.height / 2 ? 'drop-after' : 'drop-before'); }
+        const mb = m.getBoundingClientRect();
+        if(e.clientY < mb.top + 40) m.scrollTop -= 12; else if(e.clientY > mb.bottom - 40) m.scrollTop += 12;
+      });
+      body.addEventListener('drop', e => {
+        if(qd == null) return;
+        e.preventDefault();
+        const r = e.target.closest('.qdrag'), from = qd; qd = null; clearMarks();
+        if(!r) return;
+        const to = +r.dataset.i, b = r.getBoundingClientRect(), after = e.clientY > b.top + b.height / 2;
+        if(to === from) return;
+        const [item] = S.upNext.splice(from, 1);
+        const idx = (to > from ? to - 1 : to) + (after ? 1 : 0);
+        S.upNext.splice(idx, 0, item);
+        draw();
+      });
+      body.addEventListener('dragend', () => { qd = null; clearMarks(); });
       m.querySelector('#qClear').onclick = () => { S.upNext = []; syncQueueBadge(); draw(); };
     }, () => { queueRefresh = null; });
 }
@@ -1426,7 +1473,7 @@ function openMenu(id, x, y){
   closeMenu();
   const t = S.tracks.get(id); if(!t) return;
   const items = [
-    ['playnext', 'Play next', 'next'], ['queue', 'Add to queue', 'queue'],
+    ['playnext', 'Play next', 'next'], inQueue(id) ? ['queue', 'Remove from queue', 'x'] : ['queue', 'Add to queue', 'queue'],
     ['fav', t.fav ? 'Remove from favorites' : 'Add to favorites', 'heart'],
     ['addpl', 'Add to playlist', 'plus'], ['edit', 'Edit details', 'edit'], null,
     isPlView() ? ['rmpl', 'Remove from this playlist', 'minus', 'danger'] : ['del', FOLDER ? 'Delete (move to Recycle Bin)' : 'Remove from library', 'trash', 'danger']
@@ -1445,7 +1492,7 @@ function rowAction(a, id){
   else if(a === 'del') deleteTrack(id);
   else if(a === 'fav') toggleFav(id);
   else if(a === 'playnext') enqueue(id, true);
-  else if(a === 'queue') enqueue(id, false);
+  else if(a === 'queue') inQueue(id) ? dequeue(id) : enqueue(id, false);
   else if(a === 'rmpl'){
     const p = getPl(S.view); if(!p) return;
     p.trackIds = p.trackIds.filter(x => x !== id);
