@@ -83,6 +83,9 @@ select.sel{background:var(--panel2);border:1px solid var(--line);border-radius:1
 .row.cur .t{color:var(--accent2)}
 .c-idx{text-align:center;color:var(--muted)}
 .c-idx .eq{display:none}
+.c-idx .eq .ic-pause{display:none}
+.row.cur.playing .c-idx .eq .ic-play{display:none}
+.row.cur.playing .c-idx .eq .ic-pause{display:inline-block}
 .row:hover .c-idx .num,.row.cur .c-idx .num{display:none}
 .row:hover .c-idx .eq,.row.cur .c-idx .eq{display:inline-block;color:var(--accent2)}
 .row.cur .c-idx .eq svg{animation:none}
@@ -955,8 +958,8 @@ const ROW_H = 56;
 const VIS = {ids:[], start:-1, end:-1, sortable:false};
 function rowHtml(id, i){
   const t = S.tracks.get(id), srt = VIS.sortable;
-  return '<div class="row' + (id === S.curId ? ' cur' : '') + (srt ? ' srt' : '') + '" data-id="' + id + '" data-i="' + i + '"' + (srt ? ' draggable="true"' : '') + '>' +
-    '<div class="c-idx"><span class="num">' + (i + 1) + '</span><span class="eq">' + icon('play', 'fill') + '</span></div>' +
+  return '<div class="row' + (id === S.curId ? ' cur' + (S.playing ? ' playing' : '') : '') + (srt ? ' srt' : '') + '" data-id="' + id + '" data-i="' + i + '"' + (srt ? ' draggable="true"' : '') + '>' +
+    '<div class="c-idx"><span class="num">' + (i + 1) + '</span><span class="eq">' + icon('play', 'fill ic-play') + icon('pause', 'fill ic-pause') + '</span></div>' +
     '<div>' + coverHtml(t) + '</div>' +
     '<div class="c-main"><div class="t" dir="auto">' + esc(t.title) + (t.fav ? '<span class="favmark">' + icon('heart', 'fill') + '</span>' : '') + '</div><div class="a" dir="auto">' + esc(t.artist || 'Unknown artist') + '</div></div>' +
     '<div class="c-album" dir="auto">' + esc(t.album) + '</div>' +
@@ -1007,7 +1010,11 @@ $('#list').addEventListener('scroll', () => { if(scrollRaf) return; scrollRaf = 
 window.addEventListener('resize', () => renderRows(false));
 function markCurrent(){
   document.querySelectorAll('.row.cur').forEach(r => r.classList.remove('cur'));
-  if(S.curId != null){ const r = document.querySelector('.row[data-id="' + S.curId + '"]'); if(r) r.classList.add('cur'); }
+  document.querySelectorAll('.row.playing').forEach(r => r.classList.remove('playing'));
+  if(S.curId != null){
+    const r = document.querySelector('.row[data-id="' + S.curId + '"]');
+    if(r){ r.classList.add('cur'); r.classList.toggle('playing', !!S.playing); }
+  }
 }
 function renderAll(){ renderSide(); renderList(); }
 function setView(v){ S.view = v; S.q = ''; $('#q').value = ''; renderAll(); $('#list').scrollTop = 0; }
@@ -1035,6 +1042,7 @@ function syncPlayBtn(){
   $('#btnPlay').innerHTML = icon(S.playing ? 'pause' : 'play', 'fill');
   const t = S.tracks.get(S.curId);
   document.title = t && S.playing ? t.title + ' — My Music Player' : 'My Music Player';
+  markCurrent();
 }
 function setMediaSession(t){
   if(!('mediaSession' in navigator)) return;
