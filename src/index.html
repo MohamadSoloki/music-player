@@ -48,6 +48,8 @@ svg.i.fill{fill:currentColor}
 #btnBackup{margin-top:auto}
 .side-foot{padding:10px 8px 0;color:var(--muted);font-size:12px;line-height:1.8}
 .side-foot .btn{margin-top:4px}
+.foot-actions{display:flex;gap:6px;align-items:center}
+.btn.ico{padding:5px 8px}
 
 /* ---- main ---- */
 #main{display:flex;flex-direction:column;min-height:0;position:relative}
@@ -281,7 +283,6 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
         </select>
         <span id="plActions" class="top-actions"></span>
         <button class="btn" id="btnPlayAll"><span data-icon="play" class="fillicon"></span> Play all</button>
-        <button class="btn hidden" id="btnRefresh" title="Rescan the music folder and add new songs"><span data-icon="refresh"></span> Refresh folder</button>
         <button class="btn primary" id="btnAdd"><span data-icon="plus"></span> Add songs</button>
         <input type="file" id="fileIn" accept="audio/*,.mp3,.m4a,.flac,.wav,.ogg,.oga,.opus,.aac,.webm" multiple hidden>
       </div>
@@ -1999,7 +2000,7 @@ async function importDiskFile(rel, fileObj){
   return true;
 }
 let scanning = false;
-function setRefreshBusy(b){ const el = $('#btnRefresh'); el.disabled = b; el.classList.toggle('spin', b); }
+function setRefreshBusy(b){ const el = $('#btnRefresh'); if(!el) return; el.disabled = b; el.classList.toggle('spin', b); }
 // reads the folder: adds new songs and removes songs whose file no longer exists
 async function scanFolder(manual){
   if(!FOLDER || scanning) return;
@@ -2118,8 +2119,10 @@ $('#list').addEventListener('click', e => {
 });
 $('#btnPlayAll').addEventListener('click', () => playList(viewIds()));
 $('#btnAdd').addEventListener('click', () => $('#fileIn').click());
-$('#btnRefresh').addEventListener('click', () => scanFolder(true));
-$('#storageInfo').addEventListener('click', e => { if(e.target.closest('#btnOpenDir')) openMusicFolder(); });
+$('#storageInfo').addEventListener('click', e => {
+  if(e.target.closest('#btnOpenDir')) openMusicFolder();
+  else if(e.target.closest('#btnRefresh')) scanFolder(true);
+});
 $('#btnTheme').addEventListener('click', () => openTheme());
 $('#btnBackup').addEventListener('click', openBackup);
 $('#fileIn').addEventListener('change', e => { const f = e.target.files; if(f && f.length) addFiles(f); e.target.value = ''; });
@@ -2154,7 +2157,7 @@ async function updateStorage(){
   if(FOLDER){
     let total = 0; for(const t of S.tracks.values()) total += t.size || 0;
     const sz = total >= 1073741824 ? (total / 1073741824).toFixed(2) + ' GB' : Math.round(total / 1048576) + ' MB';
-    box.innerHTML = '<div>Music folder · ' + sz + '</div><button class="btn sm" id="btnOpenDir" title="Open the music folder in Explorer">' + icon('folder') + ' Open folder</button>';
+    box.innerHTML = '<div>Music folder · ' + sz + '</div><div class="foot-actions"><button class="btn sm" id="btnOpenDir" title="Open the music folder in Explorer">' + icon('folder') + ' Open folder</button><button class="btn sm ico' + (scanning ? ' spin' : '') + '" id="btnRefresh" title="Refresh folder: rescan and add new songs" aria-label="Refresh folder"' + (scanning ? ' disabled' : '') + '>' + icon('refresh') + '</button></div>';
     return;
   }
   try{
@@ -2301,7 +2304,7 @@ function openTheme(){
       FOLDER = true;
       DATA_DIR = base.replace(/[\\/]+$/, '') + SEP + 'data';
       try{ await FS.mkdir(DATA_DIR + SEP + 'covers', {recursive: true}); }catch(e){ console.warn('data dir', e); }
-      $('#btnRefresh').classList.remove('hidden'); $('#btnBackup').classList.remove('hidden');
+      $('#btnBackup').classList.remove('hidden');
     }catch(e){ console.error(e); toast('Couldn\'t create the music folder: ' + ((e && e.message) || e), false, 9000); }
   }
   document.querySelectorAll('[data-icon]').forEach(n => { n.innerHTML = icon(n.dataset.icon, n.classList.contains('fillicon') ? 'fill' : ''); });
