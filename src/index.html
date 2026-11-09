@@ -185,6 +185,22 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
 .qh{color:var(--muted);font-size:12px;margin:12px 0 4px}
 .bk-info{padding:10px;border-radius:10px;background:var(--panel2);line-height:1.9;margin-bottom:6px}
 
+/* ---- lyrics ---- */
+#lyr{position:absolute;inset:0;z-index:30;background:var(--bg);display:flex;flex-direction:column;min-height:0}
+#lyr .lh{display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--line)}
+#lyr .lt{flex:1;min-width:0}
+#lyr .lt b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#lyr .lt span{color:var(--muted);font-size:12px}
+#lyrBody{flex:1;overflow:auto;padding:34vh 28px;text-align:center;scroll-behavior:auto}
+#lyrBody .ly{font-size:clamp(18px,2.4vw,28px);line-height:1.7;padding:2px 8px;margin:4px auto;max-width:900px;color:var(--muted);opacity:.55;transition:color .2s,opacity .2s,transform .2s;border-radius:10px}
+#lyrBody.sync .ly{cursor:pointer}
+#lyrBody.sync .ly:hover{opacity:.9}
+#lyrBody .ly.on{color:var(--accent2);opacity:1;transform:scale(1.04);font-weight:700}
+#lyrBody .ly.blank{min-height:1.7em}
+#lyrBody.plain .ly{opacity:.9;color:var(--text);transform:none}
+#lyrBody .lempty{padding:0;color:var(--muted);line-height:2;max-width:520px;margin:-10vh auto 0}
+#btnLyrics.has::after{content:"";position:absolute;top:6px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--accent2)}
+
 /* ---- folder / theme ---- */
 @keyframes spin{to{transform:rotate(360deg)}}
 .spin svg{animation:spin 1s linear infinite}
@@ -289,6 +305,15 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
     </header>
     <section id="list" class="list"></section>
     <div class="drop-overlay" id="drop">Drop music files here</div>
+    <section id="lyr" class="hidden" aria-label="Lyrics">
+      <div class="lh">
+        <div class="lt"><b id="lyrTitle" dir="auto"></b><span id="lyrInfo"></span></div>
+        <button class="btn sm" id="btnLyrAdd" title="Choose a .lrc file for this song"><span data-icon="plus"></span> <span id="lyrAddLbl">Add lyrics</span></button>
+        <button class="ib" id="btnLyrClose" title="Close lyrics" data-icon="x"></button>
+      </div>
+      <div id="lyrBody"></div>
+      <input type="file" id="lrcIn" accept=".lrc,.txt,text/plain" hidden>
+    </section>
   </main>
 
   <footer id="player">
@@ -311,6 +336,7 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
       <button class="fxbtn" id="btnFx"><span data-icon="sliders"></span><span id="fxLabel">Speed and pitch</span></button>
       <button class="ib sm" id="btnEq" title="Equalizer" data-icon="eq"></button>
       <button class="ib sm" id="btnSleep" title="Sleep timer"><span data-icon="moon"></span><span class="tbadge hidden" id="sleepBadge"></span></button>
+      <button class="ib sm hidden" id="btnLyrics" title="Lyrics" data-icon="lyrics"></button>
       <button class="ib sm" id="btnQueue" title="Play queue"><span data-icon="queue"></span><span class="tbadge hidden" id="qBadge"></span></button>
       <button class="ib sm" id="btnMute" title="Mute"></button>
       <input type="range" id="vol" min="0" max="1" step="0.01" value="0.8">
@@ -421,6 +447,7 @@ const ICONS = {
   minus:'<line x1="5" y1="12" x2="19" y2="12"/>',
   grip:'<circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/>',
   refresh:'<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
+  lyrics:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="13" y2="12"/>',
   folder:'<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
   palette:'<circle cx="13.5" cy="6.5" r="1"/><circle cx="17.5" cy="10.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/><circle cx="6.5" cy="12.5" r="1"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>'
 };
@@ -1033,6 +1060,7 @@ function updateNowPlaying(){
   document.title = t && S.playing ? t.title + ' — My Music Player' : 'My Music Player';
   if(t) setMediaSession(t);
   markCurrent();
+  lyrLoad();
 }
 function syncNpFav(){
   const t = S.tracks.get(S.curId), b = $('#npFav');
@@ -1259,6 +1287,7 @@ audio.addEventListener('timeupdate', () => {
   $('#seek').value = d ? Math.min(1000, audio.currentTime / d * 1000) : 0;
   $('#tCur').textContent = fmt(audio.currentTime);
   $('#tDur').textContent = fmt(d);
+  lyrSync();
 });
 audio.addEventListener('error', () => {
   if(!loadingSrc && S.curId != null && audio.error){ toast('Error playing this file'); }
@@ -1266,7 +1295,7 @@ audio.addEventListener('error', () => {
 
 const seekEl = $('#seek');
 seekEl.addEventListener('input', () => { seeking = true; $('#tCur').textContent = fmt(seekEl.value / 1000 * curDur()); });
-seekEl.addEventListener('change', () => { const d = curDur(); if(d) audio.currentTime = seekEl.value / 1000 * d; seeking = false; });
+seekEl.addEventListener('change', () => { const d = curDur(); if(d) audio.currentTime = seekEl.value / 1000 * d; seeking = false; LY.userScrollAt = 0; lyrSync(); });
 
 /* volume */
 const volEl = $('#vol');
@@ -1931,6 +1960,9 @@ async function deleteTrack(id){
       try{ if(await FS.exists(fullPath(t.file))) await TAURI.core.invoke('move_to_trash', {path: fullPath(t.file)}); }
       catch(e){ console.error(e); toast('Couldn\'t move the file to the Recycle Bin (it may be open in another app): ' + ((e && e.message) || e), false, 7000); return; }
     }
+    if(FOLDER && t.file){   // the lyrics file goes with the song
+      try{ const lp = fullPath(lrcRel(t.file)); if(await FS.exists(lp)) await TAURI.core.invoke('move_to_trash', {path: lp}); }catch(e){ console.warn(e); }
+    }
     await removeTrackRecord(id);
     renderAll(); updateStorage();
   }catch(e){ console.error(e); toast('Delete failed'); }
@@ -2140,6 +2172,138 @@ window.addEventListener('drop', e => {
   if(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
 });
 
+
+/* ================= lyrics (.lrc next to the song) ================= */
+const LY = {id: null, lines: [], synced: false, found: false, path: '', idx: -1, loading: null, userScrollAt: 0};
+const lrcRel = rel => rel.replace(/\.[^./]+$/, '') + '.lrc';
+function decodeFileText(b){
+  if(b[0] === 0xEF && b[1] === 0xBB && b[2] === 0xBF) return new TextDecoder('utf-8').decode(b.subarray(3));
+  if(b[0] === 0xFF && b[1] === 0xFE) return new TextDecoder('utf-16le').decode(b.subarray(2));
+  if(b[0] === 0xFE && b[1] === 0xFF) return new TextDecoder('utf-16be').decode(b.subarray(2));
+  try{ return new TextDecoder('utf-8', {fatal: true}).decode(b); }
+  catch(e){ try{ return new TextDecoder('windows-1256').decode(b); }catch(_){ return new TextDecoder().decode(b); } }
+}
+// returns {synced, lines:[{t, text}]}
+function parseLrc(text){
+  let offset = 0; const timed = [], plain = [];
+  const stamp = /^\[(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?\]/;
+  const meta = /^\[([a-z]{1,8}):(.*)\]$/i;
+  for(const raw of text.replace(/^﻿/, '').split(/\r\n|\n|\r/)){
+    let line = raw.trim(); if(!line) continue;
+    const times = []; let m;
+    while((m = stamp.exec(line))){
+      times.push(+m[1] * 60 + +m[2] + (m[3] ? +('0.' + m[3]) : 0));
+      line = line.slice(m[0].length).trimStart();
+    }
+    if(!times.length){
+      const mm = meta.exec(line);
+      if(mm){ if(mm[1].toLowerCase() === 'offset'){ const o = parseInt(mm[2], 10); if(!isNaN(o)) offset = o / 1000; } continue; }
+      plain.push(line.replace(/<\d{1,3}:\d{1,2}(?:[.:]\d{1,3})?>/g, '').trim());
+      continue;
+    }
+    const txt = line.replace(/<\d{1,3}:\d{1,2}(?:[.:]\d{1,3})?>/g, '').replace(/\s{2,}/g, ' ').trim();
+    for(const t of times) timed.push({t: Math.max(0, t - offset), text: txt});
+  }
+  if(timed.length){ timed.sort((a, b) => a.t - b.t); return {synced: true, lines: timed}; }
+  return {synced: false, lines: plain.map(text => ({t: 0, text}))};
+}
+async function lyrLoad(force){
+  const id = S.curId, t = S.tracks.get(id);
+  if(!FOLDER || !t || !t.file){ LY.id = id; LY.lines = []; LY.found = false; LY.path = ''; lyrRender(); return; }
+  if(!force && LY.id === id) return;
+  LY.id = id; LY.found = false; LY.lines = []; LY.synced = false; LY.idx = -1; LY.path = lrcRel(t.file);
+  const mine = LY.loading = {};
+  try{
+    const full = fullPath(LY.path);
+    if(await FS.exists(full)){
+      const st = await FS.stat(full);
+      if(st.size > 0 && st.size <= 2 * 1048576){
+        const r = parseLrc(decodeFileText(await FS.readFile(full)));
+        if(r.lines.length){ LY.lines = r.lines; LY.synced = r.synced; LY.found = true; }
+      }
+    }
+  }catch(e){ console.warn('lyrics', e); }
+  if(LY.loading !== mine || S.curId !== id) return;
+  lyrRender();
+}
+function lyrRender(){
+  const t = S.tracks.get(S.curId);
+  $('#btnLyrics').classList.toggle('has', LY.found);
+  $('#btnLyrics').title = LY.found ? 'Lyrics' : 'Lyrics (none found for this song)';
+  const open = !$('#lyr').classList.contains('hidden');
+  $('#btnLyrics').classList.toggle('on', open);
+  if(!open) return;
+  $('#lyrTitle').textContent = t ? t.title + (t.artist ? ' — ' + t.artist : '') : 'Lyrics';
+  $('#lyrAddLbl').textContent = LY.found ? 'Replace lyrics' : 'Add lyrics';
+  $('#btnLyrAdd').classList.toggle('hidden', !t || !FOLDER || !t.file);
+  const body = $('#lyrBody');
+  body.className = LY.found ? (LY.synced ? 'sync' : 'plain') : '';
+  LY.idx = -1;
+  if(!t){ body.innerHTML = '<div class="lempty">Play a song to see its lyrics.</div>'; $('#lyrInfo').textContent = ''; return; }
+  if(!LY.found){
+    body.innerHTML = '<div class="lempty">No lyrics for this song.<br>Put a file named <b dir="ltr">' + esc(LY.path.split('/').pop() || 'song.lrc') + '</b> in the same folder as the song, or use “Add lyrics”.</div>';
+    $('#lyrInfo').textContent = '';
+    return;
+  }
+  $('#lyrInfo').textContent = (LY.synced ? 'Synced · click a line to jump to it · ' : 'Plain text (no timestamps) · ') + LY.path.split('/').pop();
+  body.innerHTML = LY.lines.map((l, i) => '<div class="ly' + (l.text ? '' : ' blank') + '" dir="auto" data-i="' + i + '">' + esc(l.text) + '</div>').join('');
+  body.scrollTop = 0;
+  lyrSync(true);
+}
+function lyrSync(jump){
+  if(!LY.found || !LY.synced || $('#lyr').classList.contains('hidden')) return;
+  const ct = audio.currentTime + 0.15, L = LY.lines;
+  let lo = 0, hi = L.length - 1, idx = -1;
+  while(lo <= hi){ const mid = (lo + hi) >> 1; if(L[mid].t <= ct){ idx = mid; lo = mid + 1; } else hi = mid - 1; }
+  if(idx === LY.idx) return;
+  const body = $('#lyrBody');
+  const old = body.querySelector('.ly.on'); if(old) old.classList.remove('on');
+  LY.idx = idx;
+  if(idx < 0) return;
+  const el = body.children[idx]; if(!el) return;
+  el.classList.add('on');
+  if(Date.now() - LY.userScrollAt > 3000){
+    const target = el.offsetTop - body.clientHeight / 2 + el.offsetHeight / 2;
+    body.scrollTo({top: Math.max(0, target), behavior: jump ? 'auto' : 'smooth'});
+  }
+}
+function lyrToggle(show){
+  const box = $('#lyr');
+  const open = show == null ? box.classList.contains('hidden') : show;
+  box.classList.toggle('hidden', !open);
+  lyrRender();
+  if(open){ LY.userScrollAt = 0; if(LY.id !== S.curId) lyrLoad(); else lyrSync(true); }
+}
+$('#btnLyrics').addEventListener('click', () => lyrToggle());
+$('#btnLyrClose').addEventListener('click', () => lyrToggle(false));
+$('#lyrBody').addEventListener('wheel', () => { LY.userScrollAt = Date.now(); }, {passive: true});
+$('#lyrBody').addEventListener('touchmove', () => { LY.userScrollAt = Date.now(); }, {passive: true});
+$('#lyrBody').addEventListener('click', e => {
+  const el = e.target.closest('.ly'); if(!el || !LY.synced) return;
+  const l = LY.lines[+el.dataset.i]; if(!l) return;
+  LY.userScrollAt = 0; audio.currentTime = l.t; lyrSync(true);
+});
+document.addEventListener('keydown', e => { if(e.key === 'Escape' && !$('#lyr').classList.contains('hidden') && !document.querySelector('.modal-back')) lyrToggle(false); });
+$('#btnLyrAdd').addEventListener('click', () => $('#lrcIn').click());
+$('#lrcIn').addEventListener('change', async () => {
+  const f = $('#lrcIn').files[0]; $('#lrcIn').value = '';
+  const t = S.tracks.get(S.curId);
+  if(!f || !t || !t.file) return;
+  try{
+    if(f.size > 2 * 1048576) throw new Error('file too large');
+    const bytes = new Uint8Array(await f.arrayBuffer());
+    if(!parseLrc(decodeFileText(bytes)).lines.length) throw new Error('empty');
+    const rel = lrcRel(t.file);
+    if(await FS.exists(fullPath(rel)) && !await askConfirm('This song already has a lyrics file. Replace it?', 'Replace')) return;
+    await FS.writeFile(fullPath(rel), bytes);
+    await lyrLoad(true);
+    toast('Lyrics saved next to the song');
+  }catch(err){
+    console.error(err);
+    toast(err && err.message === 'empty' ? 'That file has no lyrics in it' : 'Couldn\'t add the lyrics file: ' + ((err && err.message) || err), false, 6000);
+  }
+});
+
 /* keyboard */
 document.addEventListener('keydown', e => {
   if(e.ctrlKey || e.metaKey || e.altKey) return;
@@ -2304,7 +2468,7 @@ function openTheme(){
       FOLDER = true;
       DATA_DIR = base.replace(/[\\/]+$/, '') + SEP + 'data';
       try{ await FS.mkdir(DATA_DIR + SEP + 'covers', {recursive: true}); }catch(e){ console.warn('data dir', e); }
-      $('#btnBackup').classList.remove('hidden');
+      $('#btnBackup').classList.remove('hidden'); $('#btnLyrics').classList.remove('hidden');
     }catch(e){ console.error(e); toast('Couldn\'t create the music folder: ' + ((e && e.message) || e), false, 9000); }
   }
   document.querySelectorAll('[data-icon]').forEach(n => { n.innerHTML = icon(n.dataset.icon, n.classList.contains('fillicon') ? 'fill' : ''); });
