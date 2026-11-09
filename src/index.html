@@ -217,7 +217,9 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
 .trow:last-of-type{border-bottom:0}
 .trow .tl{flex:1}
 .trow .tl small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
-.trow code{direction:ltr;font-size:12px;color:var(--muted);width:68px;text-align:left}
+.trow .hex{direction:ltr;width:92px;height:32px;padding:0 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);color:var(--text);font:12px/1 ui-monospace,Consolas,monospace;text-transform:uppercase;text-align:left}
+.trow .hex:focus{outline:2px solid var(--accent);outline-offset:0}
+.trow .hex.bad{border-color:var(--danger);outline-color:var(--danger)}
 .trow input[type=color]{width:46px;height:32px;padding:0;border:1px solid var(--line);border-radius:8px;background:none;cursor:pointer}
 
 /* ---- app update ---- */
@@ -2408,6 +2410,12 @@ const THEMES = [
   {name:'Light', v:{accent:'#6a4cff', bg:'#f3f4f8', panel:'#ffffff', text:'#1b1e27', play:'#1b1e27'}}
 ];
 const HEX_RE = /^#[0-9a-f]{6}$/i;
+// accepts "#7c5cff", "7c5cff", "#7cf", "7cf" (any case, spaces around); returns "#rrggbb" or null
+function parseHex(v){
+  v = String(v || '').trim().replace(/^#/, '');
+  if(/^[0-9a-f]{3}$/i.test(v)) v = v.replace(/./g, c => c + c);
+  return /^[0-9a-f]{6}$/i.test(v) ? '#' + v.toLowerCase() : null;
+}
 function loadTheme(){
   const saved = store.get('mp_theme', {}), t = Object.assign({}, THEMES[0].v);
   for(const k of Object.keys(t)) if(saved && HEX_RE.test(saved[k])) t[k] = saved[k];
@@ -2438,7 +2446,7 @@ function openTheme(){
       };
       const drawRows = () => {
         m.querySelector('#thRows').innerHTML = THEME_KEYS.map(([k, n, d]) =>
-          '<div class="trow"><div class="tl">' + n + '<small>' + d + '</small></div><code>' + theme[k] + '</code><input type="color" data-k="' + k + '" value="' + theme[k] + '"></div>').join('');
+          '<div class="trow"><div class="tl">' + n + '<small>' + d + '</small></div><input type="text" class="hex" data-h="' + k + '" value="' + theme[k] + '" maxlength="7" spellcheck="false" autocomplete="off" dir="ltr" aria-label="' + n + ' hex code" title="Hex color, for example #7c5cff"><input type="color" data-k="' + k + '" value="' + theme[k] + '" aria-label="' + n + ' picker"></div>').join('');
       };
       const commit = () => { applyTheme(); store.set('mp_theme', theme); };
       drawPresets(); drawRows();
@@ -2447,10 +2455,28 @@ function openTheme(){
         theme = Object.assign({}, THEMES[+b.dataset.i].v); commit(); drawPresets(); drawRows();
       });
       m.querySelector('#thRows').addEventListener('input', e => {
-        const k = e.target.dataset.k; if(!k || !HEX_RE.test(e.target.value)) return;
-        theme[k] = e.target.value; commit();
-        e.target.closest('.trow').querySelector('code').textContent = e.target.value;
-        drawPresets();
+        const row = e.target.closest('.trow'); if(!row) return;
+        if(e.target.dataset.k){                       // color picker
+          const k = e.target.dataset.k; if(!HEX_RE.test(e.target.value)) return;
+          theme[k] = e.target.value; commit();
+          const hx = row.querySelector('.hex'); hx.value = e.target.value; hx.classList.remove('bad');
+          drawPresets();
+        } else if(e.target.dataset.h){                // typed hex code
+          const k = e.target.dataset.h, v = parseHex(e.target.value);
+          e.target.classList.toggle('bad', !v);
+          if(!v) return;
+          theme[k] = v; commit();
+          row.querySelector('input[type=color]').value = v;
+          drawPresets();
+        }
+      });
+      // leaving the field (or Enter) tidies a valid code, or puts back the last good one
+      const settleHex = el => { el.classList.remove('bad'); el.value = theme[el.dataset.h]; };
+      m.querySelector('#thRows').addEventListener('focusout', e => { if(e.target.dataset && e.target.dataset.h) settleHex(e.target); });
+      m.querySelector('#thRows').addEventListener('keydown', e => {
+        if(!e.target.dataset || !e.target.dataset.h) return;
+        if(e.key === 'Enter'){ e.preventDefault(); e.target.blur(); }
+        else if(e.key === 'Escape' && (e.target.value !== theme[e.target.dataset.h] || e.target.classList.contains('bad'))){ settleHex(e.target); e.stopPropagation(); }   // first Esc undoes the edit, the next closes
       });
       m.querySelector('#thReset').onclick = () => { theme = Object.assign({}, THEMES[0].v); commit(); drawPresets(); drawRows(); };
     });
