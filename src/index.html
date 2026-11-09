@@ -1654,7 +1654,12 @@ async function writeTagsToFile(t, ch){
   }catch(e){ try{ await FS.remove(tmp); }catch(_){} throw e; }
 }
 // releases the currently playing file for a while (Windows locks open files), then reloads it
+let tagWriting = false;
 async function writeTagsSafely(t, ch){
+  tagWriting = true;
+  try{ return await writeTagsSafely2(t, ch); } finally{ tagWriting = false; }
+}
+async function writeTagsSafely2(t, ch){
   const wasCur = S.curId === t.id, wasPlaying = wasCur && !audio.paused, at = wasCur ? audio.currentTime : 0;
   if(wasCur){ audio.pause(); audio.removeAttribute('src'); try{ audio.load(); }catch(e){} await sleep(250); }
   try{ await writeTagsToFile(t, ch); }
@@ -1899,6 +1904,7 @@ async function listDisk(dir, rel, depth, out){
     const r = rel ? rel + '/' + e.name : e.name;
     if(e.isDirectory){ if(depth < 3) await listDisk(dir + SEP + e.name, r, depth + 1, out); }
     else if(e.isFile && AUDIO_RE.test(e.name)) out.push(r);
+    else if(e.isFile && /\.tagtmp$/i.test(e.name)) (out.stale = out.stale || []).push(r);   // leftover of an interrupted tag write
   }
 }
 // imports a file that is in the folder into the library. fileObj is only set when it was just copied in from outside.
@@ -1947,6 +1953,7 @@ async function scanFolder(manual){
   try{
     const files = [];
     await listDisk(MUSIC_DIR, '', 0, files);
+    if(files.stale && !tagWriting){ for(const r of files.stale){ try{ await FS.remove(fullPath(r)); }catch(e){} } }
     const onDisk = new Set(files);
     const withFile = [...S.tracks.values()].filter(t => t.file);
     let doRemove = true;
