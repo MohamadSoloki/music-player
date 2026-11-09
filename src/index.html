@@ -246,6 +246,8 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
 .pick:hover{background:var(--panel2)}
 .pick span{flex:1}
 .pick small{color:var(--muted)}
+.sep-or{display:flex;align-items:center;gap:10px;margin:16px 0 12px;color:var(--muted);font-size:12px}
+.sep-or::before,.sep-or::after{content:"";flex:1;height:1px;background:var(--line)}
 .newpl{display:flex;gap:8px}
 #toast{position:fixed;bottom:104px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--panel2);border:1px solid var(--line);max-width:min(92vw,720px);line-height:1.7;padding:10px 18px;border-radius:12px;opacity:0;pointer-events:none;transition:.2s;z-index:200}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -1866,6 +1868,107 @@ function openAddToPlaylist(trackId){
     });
 }
 
+/* ---- new playlist: by name, or one playlist per album found in the songs' details ---- */
+const albumKey = a => String(a || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+function collectAlbums(){
+  const map = new Map();
+  let noAlbum = 0;
+  for(const [id, t] of S.tracks){
+    const k = albumKey(t.album);
+    if(!k){ noAlbum++; continue; }
+    let a = map.get(k); if(!a){ a = {key: k, ids: [], names: new Map()}; map.set(k, a); }
+    a.ids.push(id);
+    const nm = t.album.trim().replace(/\s+/g, ' '); a.names.set(nm, (a.names.get(nm) || 0) + 1);
+  }
+  const list = [...map.values()].map(a => {
+    a.name = [...a.names.entries()].sort((x, y) => y[1] - x[1])[0][0];
+    // album order: by file name (usually “01 - …”), then title
+    a.ids.sort((x, y) => col.compare(S.tracks.get(x).file || '', S.tracks.get(y).file || '') || col.compare(S.tracks.get(x).title, S.tracks.get(y).title));
+    return a;
+  }).sort((x, y) => col.compare(x.name, y.name));
+  return {list, noAlbum};
+}
+function openNewPlaylist(){
+  const {list} = collectAlbums();
+  const multi = list.filter(a => a.ids.length > 1).length;
+  openModal('<h3>New playlist</h3>' +
+    '<input class="inp" id="npName" dir="auto" maxlength="80" placeholder="Playlist name…">' +
+    '<div class="actions"><button class="btn primary" id="npMake">Create</button><button class="btn" data-close>Cancel</button></div>' +
+    '<div class="sep-or"><span>or</span></div>' +
+    '<button class="btn" id="npAlbums"' + (list.length ? '' : ' disabled') + '>' + icon('list') + ' Create playlists from albums…</button>' +
+    '<div class="muted small" style="margin-top:8px">' + (list.length
+      ? 'One playlist per album, named after the album and filled with its songs (' + plural(multi, 'album') + ' with more than one song).'
+      : 'No song has an album in its details yet. Set the album with “Edit details”.') + '</div>',
+    (m, close) => {
+      const inp = m.querySelector('#npName'); inp.focus();
+      const make = async () => {
+        const name = inp.value.trim(); if(!name) return;
+        const p = await createPlaylist(name); close(); setView(p.id);
+      };
+      m.querySelector('#npMake').onclick = make;
+      inp.addEventListener('keydown', e => { if(e.key === 'Enter') make(); });
+      m.querySelector('#npAlbums').onclick = () => { close(); openAlbumPlaylists(); };
+    });
+}
+function openAlbumPlaylists(){
+  const {list, noAlbum} = collectAlbums();
+  const exist = a => S.playlists.find(p => albumKey(p.name) === a.key);
+  const sel = new Set(list.filter(a => a.ids.length > 1).map(a => a.key));
+  let showSingles = false;
+  openModal('<h3>Playlists from albums</h3>' +
+    '<div class="muted small" id="alInfo"></div>' +
+    '<div id="alList" class="pick-list" style="max-height:min(360px,50vh)"></div>' +
+    '<label class="pick" style="padding:6px 10px"><input type="checkbox" id="alSingles"><span>Also show albums with only one song</span></label>' +
+    '<div class="actions"><button class="btn primary" id="alMake" disabled>Create</button><button class="btn" id="alAll">Select all</button><button class="btn" id="alNone">Select none</button><button class="btn" data-close>Cancel</button></div>',
+    (m, close) => {
+      const shown = () => list.filter(a => showSingles || a.ids.length > 1);
+      const draw = () => {
+        const sh = shown();
+        m.querySelector('#alInfo').textContent = (sh.length ? 'Pick the albums to turn into playlists. If a playlist with the album’s name already exists, the missing songs are added to it.' : 'No album has more than one song.') +
+          (noAlbum ? ' Songs without an album are skipped (' + noAlbum + ').' : '');
+        m.querySelector('#alList').innerHTML = sh.map(a => {
+          const ex = exist(a);
+          return '<label class="pick"><input type="checkbox" data-k="' + esc(a.key) + '"' + (sel.has(a.key) ? ' checked' : '') + '><span dir="auto">' + esc(a.name) + '</span>' +
+            (ex ? '<small>Playlist exists</small>' : '') + '<small>' + plural(a.ids.length, 'song') + '</small></label>';
+        }).join('');
+        sync();
+      };
+      const sync = () => {
+        const n = shown().filter(a => sel.has(a.key)).length;
+        const b = m.querySelector('#alMake'); b.disabled = !n; b.textContent = n ? 'Create ' + plural(n, 'playlist') : 'Create';
+      };
+      m.querySelector('#alList').addEventListener('change', e => {
+        const k = e.target.dataset.k; if(k == null) return;
+        if(e.target.checked) sel.add(k); else sel.delete(k);
+        sync();
+      });
+      m.querySelector('#alSingles').onchange = e => {
+        showSingles = e.target.checked;
+        if(showSingles) list.filter(a => a.ids.length === 1).forEach(a => sel.add(a.key)); else list.filter(a => a.ids.length === 1).forEach(a => sel.delete(a.key));
+        draw();
+      };
+      m.querySelector('#alAll').onclick = () => { shown().forEach(a => sel.add(a.key)); draw(); };
+      m.querySelector('#alNone').onclick = () => { shown().forEach(a => sel.delete(a.key)); draw(); };
+      m.querySelector('#alMake').onclick = async () => {
+        let created = 0, updated = 0, added = 0, last = null;
+        for(const a of shown().filter(a => sel.has(a.key))){
+          let pl = exist(a);
+          if(pl){
+            const add = a.ids.filter(id => !pl.trackIds.includes(id));
+            if(add.length){ pl.trackIds.push(...add); await dbPut('playlists', pl); updated++; added += add.length; last = pl; }
+          } else {
+            pl = await createPlaylist(a.name); pl.trackIds = a.ids.slice(); await dbPut('playlists', pl); created++; added += a.ids.length; last = pl;
+          }
+        }
+        close(); renderAll();
+        if(created + updated === 1 && last) setView(last.id);
+        toast((created ? plural(created, 'playlist') + ' created' : '') + (created && updated ? ', ' : '') + (updated ? plural(updated, 'playlist') + ' updated' : '') +
+          (created + updated ? ' (' + plural(added, 'song') + ' added)' : 'Nothing to add: those playlists already have all their songs'), false, 4200);
+      };
+      draw();
+    });
+}
+
 /* ---- “Add songs” inside a playlist: choose from the library (not from Explorer) ---- */
 function openPlaylistPicker(plId){
   const pl = getPl(plId); if(!pl) return;
@@ -2167,12 +2270,7 @@ document.addEventListener('click', e => {
   const nav = e.target.closest('#side .nav-item[data-view]');
   if(nav){ const v = nav.dataset.view; setView(/^\d+$/.test(v) ? Number(v) : v); }
 });
-$('#btnNewPl').addEventListener('click', async () => {
-  const name = await askText('New playlist name', '', 'Create');
-  if(!name) return;
-  const p = await createPlaylist(name);
-  setView(p.id);
-});
+$('#btnNewPl').addEventListener('click', () => openNewPlaylist());
 $('#plActions').addEventListener('click', async e => {
   const b = e.target.closest('button'); if(!b) return;
   const p = getPl(S.view); if(!p) return;
