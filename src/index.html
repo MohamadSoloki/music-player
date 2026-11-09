@@ -1027,7 +1027,7 @@ function renderList(){
     else if(S.view === 'all') msg = '<div class="big">' + icon('music') + '</div><div>Your library is empty.<br>Drag and drop music files here<br>or click “Add songs”.' + (FOLDER ? '<br>You can also copy files straight into the music folder and click “Refresh folder”.' : '') + '</div>';
     else if(S.view === 'fav') msg = '<div class="big">' + icon('heart') + '</div><div>No favorites yet.<br>Click the heart next to a song.</div>';
     else if(S.view === 'recent') msg = '<div class="big">' + icon('clock') + '</div><div>Nothing played yet.</div>';
-    else msg = '<div class="big">' + icon('list') + '</div><div>This playlist is empty.<br>Click the ⋮ button next to a song and choose “Add to playlist”.</div>';
+    else msg = '<div class="big">' + icon('list') + '</div><div>This playlist is empty.<br>Click “Add songs” to pick songs from your library.</div>';
     L.innerHTML = '<div class="empty">' + msg + '</div>';
     return;
   }
@@ -1866,6 +1866,55 @@ function openAddToPlaylist(trackId){
     });
 }
 
+/* ---- “Add songs” inside a playlist: choose from the library (not from Explorer) ---- */
+function openPlaylistPicker(plId){
+  const pl = getPl(plId); if(!pl) return;
+  const have = new Set(pl.trackIds), sel = new Set(), CAP = 400;
+  const all = [...S.tracks.keys()].sort((a, b) => col.compare(S.tracks.get(a).title, S.tracks.get(b).title));
+  openModal('<h3>Add songs to “<span id="ppName" dir="auto"></span>”</h3>' +
+    '<input class="inp" id="ppQ" type="search" dir="auto" placeholder="Search your songs…" autocomplete="off">' +
+    '<div id="ppList" class="pick-list" style="max-height:min(380px,50vh)"></div>' +
+    '<div class="muted small" id="ppInfo"></div>' +
+    '<div class="actions"><button class="btn primary" id="ppAdd" disabled>Add</button><button class="btn" id="ppAll">Select all shown</button><button class="btn" data-close>Cancel</button></div>',
+    (m, close) => {
+      m.querySelector('#ppName').textContent = pl.name;
+      let shown = [];
+      const draw = () => {
+        const q = m.querySelector('#ppQ').value.trim().toLowerCase();
+        const hits = q ? all.filter(id => { const t = S.tracks.get(id); return (t.title + ' ' + t.artist + ' ' + t.album).toLowerCase().includes(q); }) : all;
+        shown = hits.slice(0, CAP);
+        m.querySelector('#ppList').innerHTML = shown.length ? shown.map(id => {
+          const t = S.tracks.get(id), has = have.has(id);
+          return '<label class="pick"><input type="checkbox" data-id="' + id + '"' + (has || sel.has(id) ? ' checked' : '') + (has ? ' disabled' : '') + '>' +
+            '<span dir="auto">' + esc(t.title) + (t.artist ? ' <small>— ' + esc(t.artist) + '</small>' : '') + '</span>' + (has ? '<small>Already added</small>' : '') + '</label>';
+        }).join('') : '<div class="muted pad">' + (all.length ? 'No songs match your search.' : 'Your library is empty.') + '</div>';
+        m.querySelector('#ppInfo').textContent = hits.length > CAP ? 'Showing the first ' + CAP + ' of ' + hits.length + ' songs. Type in the search box to narrow the list.' : '';
+        sync();
+      };
+      const sync = () => {
+        const b = m.querySelector('#ppAdd'); b.disabled = !sel.size;
+        b.textContent = sel.size ? 'Add ' + plural(sel.size, 'song') : 'Add';
+        m.querySelector('#ppAll').disabled = !shown.some(id => !have.has(id) && !sel.has(id));
+      };
+      m.querySelector('#ppQ').addEventListener('input', draw);
+      m.querySelector('#ppList').addEventListener('change', e => {
+        const id = +e.target.dataset.id; if(!id && id !== 0) return;
+        if(e.target.checked) sel.add(id); else sel.delete(id);
+        sync();
+      });
+      m.querySelector('#ppAll').onclick = () => { shown.forEach(id => { if(!have.has(id)) sel.add(id); }); draw(); };
+      m.querySelector('#ppAdd').onclick = async () => {
+        const ids = [...sel].filter(id => S.tracks.has(id) && !pl.trackIds.includes(id));
+        if(!ids.length){ close(); return; }
+        pl.trackIds.push(...ids);
+        await dbPut('playlists', pl);
+        close(); renderAll();
+        toast(plural(ids.length, 'song') + ' added to “' + pl.name + '”');
+      };
+      draw(); m.querySelector('#ppQ').focus();
+    });
+}
+
 /* ================= adding / deleting tracks ================= */
 /* ---- duplicate detection: a file with the same size and the same bytes as a song already in the library ---- */
 async function sameContent(f, rd){
@@ -2152,7 +2201,7 @@ $('#list').addEventListener('click', e => {
   playList(viewIds(), id);
 });
 $('#btnPlayAll').addEventListener('click', () => playList(viewIds()));
-$('#btnAdd').addEventListener('click', () => $('#fileIn').click());
+$('#btnAdd').addEventListener('click', () => { if(isPlView()) openPlaylistPicker(S.view); else $('#fileIn').click(); });
 $('#storageInfo').addEventListener('click', e => {
   if(e.target.closest('#btnOpenDir')) openMusicFolder();
   else if(e.target.closest('#btnRefresh')) scanFolder(true);
