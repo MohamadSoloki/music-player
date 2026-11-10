@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0e1014">
+<title>Music remote</title>
+<style>
+:root{--bg:#0e1014;--panel:#161920;--text:#e9ebf1;--accent:#7c5cff;--on-accent:#fff;
+  --panel2:color-mix(in srgb,var(--panel) 88%,var(--text));--line:color-mix(in srgb,var(--panel) 80%,var(--text));
+  --muted:color-mix(in srgb,var(--text) 58%,var(--bg));--accent2:color-mix(in srgb,var(--accent) 62%,var(--text));
+  --danger:#ff5d6c;color-scheme:dark}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:15px/1.4 system-ui,"Segoe UI",Tahoma,sans-serif;display:flex;flex-direction:column;overflow:hidden}
+button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:pointer}
+svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+svg.f{fill:currentColor}
+.hidden{display:none!important}
+header{display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top)) 16px 10px}
+header b{flex:1;font-size:16px}
+#dot{width:10px;height:10px;border-radius:50%;background:#888}
+#dot.ok{background:#35d07f}#dot.bad{background:var(--danger)}
+main{flex:1;min-height:0;overflow:auto;padding:0 16px 16px}
+.view{display:none}.view.on{display:block}
+nav{display:grid;grid-template-columns:repeat(4,1fr);background:var(--panel);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 0 8px;color:var(--muted);font-size:11px}
+nav button.on{color:var(--accent2)}
+/* now playing */
+.cover{width:min(72vw,300px);aspect-ratio:1;margin:8px auto 14px;border-radius:18px;background:linear-gradient(135deg,var(--accent),var(--panel2));display:grid;place-items:center;overflow:hidden;color:rgba(255,255,255,.7)}
+.cover img{width:100%;height:100%;object-fit:cover}
+.cover svg{width:64px;height:64px}
+.title{font-size:20px;font-weight:700;text-align:center;overflow-wrap:anywhere}
+.sub{color:var(--muted);text-align:center;margin-top:2px;overflow-wrap:anywhere}
+.seek{display:flex;align-items:center;gap:10px;margin:16px 0 6px;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.seek input{flex:1}
+input[type=range]{-webkit-appearance:none;appearance:none;height:28px;background:transparent;accent-color:var(--accent)}
+input[type=range]::-webkit-slider-runnable-track{height:5px;border-radius:3px;background:var(--line)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--accent2);margin-top:-7.5px}
+input[type=range]::-moz-range-track{height:5px;border-radius:3px;background:var(--line)}
+input[type=range]::-moz-range-thumb{width:20px;height:20px;border:0;border-radius:50%;background:var(--accent2)}
+.ctrls{display:flex;align-items:center;justify-content:space-between;margin:6px 4px}
+.ib{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;color:var(--text)}
+.ib:active{background:var(--panel2)}
+.ib.dim{color:var(--muted)}.ib.on{color:var(--accent2)}
+.ib.play{width:68px;height:68px;background:var(--accent);color:var(--on-accent)}
+.ib.play svg{width:30px;height:30px}
+.ib.play:active{filter:brightness(.9);background:var(--accent)}
+.rep{position:relative}.rep i{position:absolute;right:11px;top:9px;font:700 10px/1 system-ui;font-style:normal}
+.row2{display:flex;align-items:center;gap:6px;margin-top:6px}
+.row2 input{flex:1}
+h3{margin:18px 0 8px;font-size:13px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+/* lists */
+.search{display:flex;gap:8px;position:sticky;top:0;background:var(--bg);padding:4px 0 10px;z-index:2}
+.search input[type=search],input.txt,select{flex:1;min-width:0;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:11px 12px;color:var(--text);font:inherit;outline:0}
+select{flex:none}
+.item{display:flex;align-items:center;gap:6px;padding:8px 4px;border-bottom:1px solid var(--line)}
+.item .tx{flex:1;min-width:0;padding:4px 6px}
+.item .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .a{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item.cur .t{color:var(--accent2);font-weight:700}
+.item .ib{width:40px;height:40px;color:var(--muted)}
+.item .ib svg{width:19px;height:19px}
+.more{display:block;margin:14px auto;padding:10px 18px;border-radius:12px;background:var(--panel2)}
+.empty{color:var(--muted);text-align:center;padding:30px 10px}
+.pl{display:flex;align-items:center;gap:10px;padding:12px 6px;border-bottom:1px solid var(--line)}
+.pl .tx{flex:1;min-width:0}.pl small{color:var(--muted)}
+.back{display:flex;align-items:center;gap:6px;color:var(--accent2);padding:8px 0}
+/* add */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;margin-top:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--accent);color:var(--on-accent);border-radius:12px;padding:12px 16px;font-weight:600}
+.btn.alt{background:var(--panel2);color:var(--text)}
+.btn:disabled{opacity:.5}
+.note{color:var(--muted);font-size:12px;margin-top:8px}
+.up{margin-top:10px;font-size:13px}
+.up .bar{height:5px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:4px}
+.up .bar i{display:block;height:100%;width:0;background:var(--accent)}
+.up.err{color:var(--danger)}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(74px + env(safe-area-inset-bottom));background:var(--panel2);border:1px solid var(--line);padding:10px 16px;border-radius:12px;max-width:90vw;text-align:center;z-index:9;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+#lost{background:var(--danger);color:#fff;text-align:center;padding:6px;font-size:13px}
+</style>
+</head>
+<body>
+<div id="lost" class="hidden">Connection lost. Is the app open on your computer? Trying again…</div>
+<header><b>Music remote</b><span id="dot"></span></header>
+<main>
+  <section class="view on" id="v-now">
+    <div class="cover" id="cover"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
+    <div class="title" id="title" dir="auto">Nothing playing</div>
+    <div class="sub" id="sub" dir="auto"></div>
+    <div class="seek"><span id="tc">0:00</span><input type="range" id="seek" min="0" max="1000" value="0"><span id="td">0:00</span></div>
+    <div class="ctrls">
+      <button class="ib dim" id="bShuf" aria-label="Shuffle"><svg viewBox="0 0 24 24"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg></button>
+      <button class="ib" id="bPrev" aria-label="Previous"><svg class="f" viewBox="0 0 24 24"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg></button>
+      <button class="ib play" id="bPlay" aria-label="Play or pause"></button>
+      <button class="ib" id="bNext" aria-label="Next"><svg class="f" viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg></button>
+      <button class="ib dim rep" id="bRep" aria-label="Repeat"><svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><i id="repN"></i></button>
+    </div>
+    <div class="ctrls">
+      <button class="ib dim" id="bBack" aria-label="Back 10 seconds"><svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>
+      <button class="ib dim" id="bFav" aria-label="Favorite"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+      <button class="ib dim" id="bFwd" aria-label="Forward 10 seconds"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
+    </div>
+    <div class="row2">
+      <button class="ib dim" id="bMute" aria-label="Mute"></button>
+      <input type="range" id="vol" min="0" max="100" value="80" aria-label="Volume">
+    </div>
+    <h3>Up next</h3>
+    <div id="upnext"></div>
+  </section>
+
+  <section class="view" id="v-songs">
+    <div class="search"><input type="search" id="q" placeholder="Search songs…" dir="auto" autocomplete="off">
+      <select id="sort" aria-label="Sort"><option value="new">Newest</option><option value="title">Title</option><option value="artist">Artist</option></select></div>
+    <div id="songs"></div>
+  </section>
+
+  <section class="view" id="v-pl">
+    <div id="pls"></div>
+  </section>
+
+  <section class="view" id="v-add">
+    <div class="card">
+      <b>Add songs from this phone</b>
+      <div class="note">They are copied into the music folder on the computer. Songs that are already there are skipped.</div>
+      <p><label class="btn" for="file">Choose songs…</label><input type="file" id="file" multiple accept="audio/*,.mp3,.m4a,.flac,.wav,.ogg,.oga,.opus,.aac,.webm,.wma" class="hidden"></p>
+      <div id="ups"></div>
+    </div>
+    <div class="card">
+      <b>Download from a link</b>
+      <div class="note">Paste a direct link to an audio file (ending in .mp3, .m4a, .flac …). The computer downloads it.</div>
+      <p style="display:flex;gap:8px;margin:10px 0 0"><input class="txt" id="url" type="url" inputmode="url" placeholder="https://…" autocomplete="off" autocapitalize="off"><button class="btn" id="bUrl">Download</button></p>
+    </div>
+  </section>
+</main>
+<nav>
+  <button data-v="now" class="on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon class="f" points="10 8 16 12 10 16 10 8"/></svg>Now</button>
+  <button data-v="songs"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>Songs</button>
+  <button data-v="pl"><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Playlists</button>
+  <button data-v="add"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Add</button>
+</nav>
+<div id="toast" class="hidden"></div>
+<script>
+(function(){
+'use strict';
+const $ = s => document.querySelector(s);
+const BASE = location.pathname.replace(/\/?$/, '/');
+const ICON_PLAY = '<svg class="f" viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></svg>';
+const ICON_PAUSE = '<svg class="f" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+const ICON_VOL = '<svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>';
+const ICON_MUTE = '<svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>';
+const ICON_NEXT = '<svg viewBox="0 0 24 24"><polygon class="f" points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>';
+const ICON_QUEUE = '<svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="15" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="11" y2="18"/><line x1="18" y1="14" x2="18" y2="22"/><line x1="14" y1="18" x2="22" y2="18"/></svg>';
+const ICON_X = '<svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+const ICON_PL = '<svg class="f" viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></svg>';
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = s => { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+const col = new Intl.Collator(undefined, {numeric: true, sensitivity: 'base'});
+
+let S = {}, LIB = {tracks: [], playlists: []}, byId = new Map(), ver = 0, libVer = 0, covVer = -1;
+let at = 0, seeking = false, lastNote = -1, plOpen = null, shown = 100;
+let toastT = 0;
+
+function toast(m){ const t = $('#toast'); t.textContent = m; t.classList.remove('hidden'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.add('hidden'), 4500); }
+// fetch that gives up after `ms` (a stopped server can leave a kept-alive connection hanging)
+function tfetch(url, opt, ms){
+  const ac = new AbortController(), k = setTimeout(() => ac.abort(), ms || 8000);
+  return fetch(url, Object.assign({signal: ac.signal}, opt)).finally(() => clearTimeout(k));
+}
+function cmd(o){
+  return tfetch(BASE + 'api/cmd', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(o)}, 6000).catch(() => toast('Could not reach the computer'));
+}
+
+/* ---- tabs ---- */
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.id === 'v-' + b.dataset.v));
+  $('main').scrollTop = 0;
+});
+
+/* ---- theme from the desktop app ---- */
+function lum(h){ const c = [1, 3, 5].map(i => { const v = parseInt(h.slice(i, i + 2), 16) / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; }
+function applyTheme(t){
+  if(!t) return;
+  const ok = h => /^#[0-9a-f]{6}$/i.test(h || '');
+  if(!ok(t.accent) || !ok(t.bg) || !ok(t.panel) || !ok(t.text)) return;
+  const st = document.documentElement.style;
+  st.setProperty('--accent', t.accent); st.setProperty('--bg', t.bg); st.setProperty('--panel', t.panel); st.setProperty('--text', t.text);
+  st.setProperty('--on-accent', lum(t.accent) > 0.179 ? '#111' : '#fff');
+  st.colorScheme = lum(t.bg) > 0.4 ? 'light' : 'dark';
+  document.querySelector('meta[name=theme-color]').content = t.bg;
+}
+
+/* ---- state ---- */
+function paint(){
+  const s = S, t = byId.get(s.id);
+  $('#title').textContent = s.id != null ? (s.title || (t && t.t) || '') : 'Nothing playing';
+  $('#sub').textContent = [s.artist, s.album].filter(Boolean).join(' · ');
+  $('#bPlay').innerHTML = s.playing ? ICON_PAUSE : ICON_PLAY;
+  $('#bShuf').classList.toggle('on', !!s.shuffle); $('#bShuf').classList.toggle('dim', !s.shuffle);
+  $('#bRep').classList.toggle('on', s.repeat > 0); $('#bRep').classList.toggle('dim', !(s.repeat > 0));
+  $('#repN').textContent = s.repeat === 2 ? '1' : '';
+  $('#bFav').classList.toggle('on', !!s.fav); $('#bFav').classList.toggle('dim', !s.fav);
+  $('#bFav svg').classList.toggle('f', !!s.fav);
+  $('#bMute').innerHTML = s.muted || s.vol === 0 ? ICON_MUTE : ICON_VOL;
+  if(document.activeElement !== $('#vol')) $('#vol').value = Math.round((s.vol == null ? 0.8 : s.vol) * 100);
+  document.title = s.playing && s.title ? s.title : 'Music remote';
+  $('#td').textContent = fmt(s.d);
+  tick();
+  paintQueue();
+  markCurrent();
+}
+function pos(){ return S.playing ? Math.min(S.d || 1e9, (S.t || 0) + (Date.now() - at) / 1000) : (S.t || 0); }
+function tick(){
+  if(seeking) return;
+  const p = pos();
+  $('#tc').textContent = fmt(p);
+  $('#seek').value = S.d ? Math.min(1000, p / S.d * 1000) : 0;
+}
+setInterval(tick, 250);
+function setCover(cv){
+  if(cv === covVer) return; covVer = cv;
+  const box = $('#cover'), img = new Image();
+  img.onload = () => { box.innerHTML = ''; box.appendChild(img); };
+  img.onerror = () => { box.innerHTML = '<svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>'; };
+  img.alt = ''; img.src = BASE + 'api/cover?c=' + cv;
+}
+function paintQueue(){
+  const ids = (S.up || []).filter(id => byId.has(id));
+  $('#upnext').innerHTML = ids.length ? ids.map(id => { const t = byId.get(id);
+    return '<div class="item"><div class="tx"><div class="t" dir="auto">' + esc(t.t) + '</div><div class="a" dir="auto">' + esc(t.a) + '</div></div><button class="ib" data-dq="' + id + '" aria-label="Remove from queue">' + ICON_X + '</button></div>'; }).join('')
+    : '<div class="empty" style="padding:14px">The queue is empty. Add songs from the Songs tab.</div>';
+}
+$('#upnext').onclick = e => { const b = e.target.closest('[data-dq]'); if(b) cmd({op: 'dequeue', id: +b.dataset.dq}); };
+function markCurrent(){
+  document.querySelectorAll('.item[data-id]').forEach(el => el.classList.toggle('cur', +el.dataset.id === S.id));
+}
+
+/* ---- controls ---- */
+$('#bPlay').onclick = () => { S.playing = !S.playing; S.t = pos(); at = Date.now(); paint(); cmd({op: 'toggle'}); };
+$('#bNext').onclick = () => cmd({op: 'next'});
+$('#bPrev').onclick = () => cmd({op: 'prev'});
+$('#bShuf').onclick = () => cmd({op: 'shuffle'});
+$('#bRep').onclick = () => cmd({op: 'repeat'});
+$('#bFav').onclick = () => cmd({op: 'fav'});
+$('#bMute').onclick = () => cmd({op: 'mute'});
+$('#bBack').onclick = () => cmd({op: 'skip', d: -10});
+$('#bFwd').onclick = () => cmd({op: 'skip', d: 10});
+$('#seek').addEventListener('input', () => { seeking = true; $('#tc').textContent = fmt($('#seek').value / 1000 * (S.d || 0)); });
+$('#seek').addEventListener('change', () => {
+  const t = $('#seek').value / 1000 * (S.d || 0); S.t = t; at = Date.now(); seeking = false; cmd({op: 'seek', t});
+});
+let volT = 0;
+$('#vol').addEventListener('input', () => { clearTimeout(volT); volT = setTimeout(() => cmd({op: 'vol', v: $('#vol').value / 100}), 60); });
+
+/* ---- library ---- */
+function songRow(t, extra){
+  return '<div class="item' + (t.id === S.id ? ' cur' : '') + '" data-id="' + t.id + '"' + (extra || '') + '><button class="tx" data-play="' + t.id + '" style="text-align:start"><div class="t" dir="auto">' + esc(t.t) + '</div><div class="a" dir="auto">' + esc(t.a || '') + (t.a && t.al ? ' · ' : '') + esc(t.al || '') + '</div></button>' +
+    '<button class="ib" data-next="' + t.id + '" aria-label="Play next">' + ICON_NEXT + '</button><button class="ib" data-q="' + t.id + '" aria-label="Add to queue">' + ICON_QUEUE + '</button></div>';
+}
+function filtered(){
+  const q = $('#q').value.trim().toLowerCase(), sort = $('#sort').value;
+  let l = LIB.tracks;
+  if(q) l = l.filter(t => (t.t + ' ' + t.a + ' ' + t.al).toLowerCase().includes(q));
+  l = l.slice();
+  if(sort === 'title') l.sort((a, b) => col.compare(a.t, b.t));
+  else if(sort === 'artist') l.sort((a, b) => col.compare(a.a, b.a));
+  else l.sort((a, b) => b.id - a.id);
+  return l;
+}
+function paintSongs(){
+  const l = filtered(), part = l.slice(0, shown);
+  $('#songs').innerHTML = (part.length ? part.map(t => songRow(t)).join('') : '<div class="empty">' + (LIB.tracks.length ? 'No songs match.' : 'No songs yet.') + '</div>') +
+    (l.length > shown ? '<button class="more" id="more">Show more (' + (l.length - shown) + ')</button>' : '');
+}
+function playCtx(id){ return {op: 'playTrack', id, src: 'all', sort: $('#sort').value, q: $('#q').value.trim()}; }
+$('#songs').onclick = e => {
+  const p = e.target.closest('[data-play]'), n = e.target.closest('[data-next]'), q = e.target.closest('[data-q]');
+  if(e.target.closest('#more')){ shown += 200; paintSongs(); return; }
+  if(p) cmd(playCtx(+p.dataset.play));
+  else if(n){ cmd({op: 'queue', id: +n.dataset.next, next: true}); toast('Will play next'); }
+  else if(q){ cmd({op: 'queue', id: +q.dataset.q}); toast('Added to queue'); }
+};
+let qT = 0;
+$('#q').addEventListener('input', () => { clearTimeout(qT); qT = setTimeout(() => { shown = 100; paintSongs(); }, 150); });
+$('#sort').addEventListener('change', () => { shown = 100; paintSongs(); try{ localStorage.setItem('mr_sort', $('#sort').value); }catch(e){} });
+try{ const sv = localStorage.getItem('mr_sort'); if(sv) $('#sort').value = sv; }catch(e){}
+
+function paintPls(){
+  const box = $('#pls');
+  if(plOpen != null){
+    const p = LIB.playlists.find(x => x.id === plOpen);
+    if(!p){ plOpen = null; return paintPls(); }
+    box.innerHTML = '<button class="back" id="plBack">‹ Playlists</button><div class="pl"><div class="tx"><b dir="auto">' + esc(p.n) + '</b><br><small>' + p.ids.length + ' songs</small></div><button class="btn" data-plplay="' + p.id + '">' + ICON_PL + ' Play</button></div>' +
+      (p.ids.length ? p.ids.map(id => byId.get(id)).filter(Boolean).map(t => songRow(t, ' data-pl="' + p.id + '"')).join('') : '<div class="empty">This playlist is empty.</div>');
+    return;
+  }
+  box.innerHTML = LIB.playlists.length ? LIB.playlists.map(p => '<button class="pl" data-open="' + p.id + '" style="width:100%;text-align:start"><div class="tx"><b dir="auto">' + esc(p.n) + '</b><br><small>' + p.ids.length + ' songs</small></div><span style="color:var(--muted)">›</span></button>').join('') : '<div class="empty">No playlists yet. Create them in the app on your computer.</div>';
+}
+$('#pls').onclick = e => {
+  const o = e.target.closest('[data-open]'), pp = e.target.closest('[data-plplay]'), p = e.target.closest('[data-play]'), n = e.target.closest('[data-next]'), q = e.target.closest('[data-q]');
+  if(o){ plOpen = +o.dataset.open; paintPls(); $('main').scrollTop = 0; }
+  else if(e.target.closest('#plBack')){ plOpen = null; paintPls(); }
+  else if(pp) cmd({op: 'playPl', pl: +pp.dataset.plplay});
+  else if(p){ cmd({op: 'playTrack', id: +p.dataset.play, src: 'pl', pl: plOpen}); }
+  else if(n){ cmd({op: 'queue', id: +n.dataset.next, next: true}); toast('Will play next'); }
+  else if(q){ cmd({op: 'queue', id: +q.dataset.q}); toast('Added to queue'); }
+};
+
+async function loadLib(){
+  try{
+    const r = await tfetch(BASE + 'api/library', {cache: 'no-store'}, 15000);
+    LIB = await r.json(); byId = new Map(LIB.tracks.map(t => [t.id, t]));
+    applyTheme(LIB.theme); paintSongs(); paintPls(); paintQueue(); markCurrent();
+  }catch(e){}
+}
+
+/* ---- adding songs ---- */
+const upQ = []; let upBusy = false;
+$('#file').onchange = () => { for(const f of $('#file').files) upQ.push(f); $('#file').value = ''; nextUp(); };
+function nextUp(){
+  if(upBusy || !upQ.length) return;
+  const f = upQ.shift(); upBusy = true;
+  const row = document.createElement('div'); row.className = 'up';
+  row.innerHTML = '<div dir="auto">' + esc(f.name) + '</div><div class="bar"><i></i></div>';
+  $('#ups').prepend(row);
+  const done = (msg, err) => { upBusy = false; if(msg){ row.firstChild.textContent = f.name + ' — ' + msg; } row.classList.toggle('err', !!err); if(err) row.querySelector('.bar').remove(); setTimeout(nextUp, 50); };
+  if(f.size > 300 * 1024 * 1024) return done('too large (max 300 MB)', true);
+  const x = new XMLHttpRequest();
+  x.open('POST', BASE + 'api/upload');
+  x.setRequestHeader('X-Filename', encodeURIComponent(f.name));
+  x.upload.onprogress = e => { if(e.lengthComputable) row.querySelector('.bar i').style.width = Math.round(e.loaded / e.total * 100) + '%'; };
+  x.onload = () => { if(x.status === 200){ row.querySelector('.bar i').style.width = '100%'; done('sent, adding on the computer…'); } else done(x.status === 400 ? 'not an audio file' : x.status === 413 ? 'too large' : 'failed (' + x.status + ')', true); };
+  x.onerror = () => done('connection lost', true);
+  x.send(f);
+}
+$('#bUrl').onclick = async () => {
+  const u = $('#url').value.trim(); if(!u) return;
+  if(!/^https?:\/\//i.test(u)) return toast('The link must start with http:// or https://');
+  try{
+    const r = await tfetch(BASE + 'api/fetch', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({url: u})}, 8000);
+    if(r.ok){ toast('The computer is downloading it…'); $('#url').value = ''; } else toast('That link was refused');
+  }catch(e){ toast('Could not reach the computer'); }
+};
+
+/* ---- live updates: long polling ---- */
+let fails = 0, polling = false, curAc = null, kicked = false;
+async function poll(){
+  if(polling) return; polling = true;
+  for(;;){
+    const ac = curAc = new AbortController(), kill = setTimeout(() => ac.abort(), 9000);
+    try{
+      const r = await fetch(BASE + 'api/state?v=' + ver, {signal: ac.signal, cache: 'no-store'});
+      if(!r.ok) throw new Error('http ' + r.status);
+      const j = await r.json();
+      clearTimeout(kill); fails = 0; $('#dot').className = 'ok'; $('#lost').classList.add('hidden');
+      ver = j.v; S = j.s || {}; at = Date.now();
+      if(j.lv !== libVer){ libVer = j.lv; loadLib(); }
+      setCover(j.cv);
+      for(const n of (j.n || [])){ if(lastNote < 0) continue; if(n.i > lastNote) toast(n.m); }
+      if(j.n && j.n.length) lastNote = Math.max(lastNote, j.n[j.n.length - 1].i); else if(lastNote < 0) lastNote = 0;
+      paint();
+    }catch(e){
+      clearTimeout(kill);
+      if(kicked){ kicked = false; ver = 0; continue; }   // we cancelled it ourselves (page came back to the foreground)
+      fails++;
+      $('#dot').className = 'bad'; $('#lost').classList.remove('hidden');
+      await new Promise(r => setTimeout(r, Math.min(5000, 800 * fails)));
+    }
+  }
+}
+// the phone may pause timers in the background: refresh as soon as the page is visible again
+document.addEventListener('visibilitychange', () => { if(!document.hidden && curAc){ kicked = true; curAc.abort(); } });
+paint(); poll();
+})();
+</script>
+</body>
+</html>

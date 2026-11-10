@@ -185,6 +185,17 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
 .qh{color:var(--muted);font-size:12px;margin:12px 0 4px}
 .bk-info{padding:10px;border-radius:10px;background:var(--panel2);line-height:1.9;margin-bottom:6px}
 
+/* ---- phone remote ---- */
+.nav-item.live .nm::after{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:#35d07f;margin-left:8px;vertical-align:middle}
+.rm-qr{display:grid;place-items:center;margin:14px 0 8px}
+.rm-qr svg{width:220px;height:220px;border-radius:12px;background:#fff}
+.rm-url{display:flex;gap:8px;margin:8px 0}
+.rm-url .inp{direction:ltr;font-size:12px}
+.rm-note{color:var(--muted);font-size:12px;line-height:1.8;margin:8px 0}
+.rm-switch{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;background:var(--panel2)}
+.rm-switch b{flex:1}
+.rm-switch .btn{min-width:92px;justify-content:center}
+
 /* ---- lyrics ---- */
 #lyr{position:absolute;inset:0;z-index:30;background:var(--bg);display:flex;flex-direction:column;min-height:0}
 #lyr .lh{display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--line)}
@@ -280,6 +291,7 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
       <div id="plList"></div>
     </nav>
     <button class="nav-item hidden" id="btnBackup"><span data-icon="shield"></span><span class="nm">Backup</span></button>
+    <button class="nav-item hidden" id="btnRemote"><span data-icon="phone"></span><span class="nm">Phone remote</span></button>
     <button class="nav-item" id="btnTheme"><span data-icon="palette"></span><span class="nm">Appearance</span></button>
     <div class="side-foot" id="storageInfo"></div>
     <div class="app-info hidden" id="appInfo"><span>Version <b id="appVer" dir="ltr">—</b></span><button class="btn sm" id="btnChkUpd">Check for updates</button></div>
@@ -452,6 +464,7 @@ const ICONS = {
   grip:'<circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/>',
   refresh:'<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
   lyrics:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="13" y2="12"/>',
+  phone:'<rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>',
   folder:'<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
   palette:'<circle cx="13.5" cy="6.5" r="1"/><circle cx="17.5" cy="10.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/><circle cx="6.5" cy="12.5" r="1"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>'
 };
@@ -965,6 +978,7 @@ function coverHtml(t, cls){
 
 const VIEW_TITLES = {all:'All songs', fav:'Favorites', recent:'Recently played'};
 function renderSide(){
+  remLibDirty();
   $('#cAll').textContent = S.tracks.size;
   let nf = 0; for(const t of S.tracks.values()) if(t.fav) nf++;
   $('#cFav').textContent = nf;
@@ -1059,6 +1073,7 @@ function updateNowPlaying(){
   $('#npCover').innerHTML = coverHtml(t);
   hydrateCovers($('#npCover'));
   syncNpFav();
+  remPush(); remCover();
   $('#npTitle').textContent = t ? t.title : 'Nothing selected';
   $('#npArtist').textContent = t ? ([t.artist, t.album].filter(Boolean).join(' · ') || '—') : 'Pick a song to play';
   document.title = t && S.playing ? t.title + ' — My Music Player' : 'My Music Player';
@@ -1067,11 +1082,13 @@ function updateNowPlaying(){
   lyrLoad();
 }
 function syncNpFav(){
+  remPush();
   const t = S.tracks.get(S.curId), b = $('#npFav');
   b.classList.toggle('hidden', !t); b.classList.toggle('on', !!(t && t.fav));
   b.title = t && t.fav ? 'Remove from favorites' : 'Add to favorites';
 }
 function syncPlayBtn(){
+  remPush();
   $('#btnPlay').innerHTML = icon(S.playing ? 'pause' : 'play', 'fill');
   const t = S.tracks.get(S.curId);
   document.title = t && S.playing ? t.title + ' — My Music Player' : 'My Music Player';
@@ -1252,6 +1269,9 @@ function togglePlay(){
 
 let seeking = false;
 audio.addEventListener('play', () => { S.playing = true; syncPlayBtn(); ensureGraph(); });
+audio.addEventListener('seeked', () => remPush());
+audio.addEventListener('volumechange', () => remPush());
+audio.addEventListener('durationchange', () => remPush());
 audio.addEventListener('pause', () => {
   S.playing = false; syncPlayBtn(); saveResume();
   // when nothing has played for a while, suspend the audio engine so the CPU stays idle
@@ -1309,6 +1329,7 @@ $('#btnMute').addEventListener('click', () => { audio.muted = !audio.muted; sync
 
 /* shuffle / repeat */
 function syncModes(){
+  remPush();
   $('#btnShuffle').classList.toggle('on', S.shuffle);
   $('#btnRepeat').classList.toggle('on', S.repeat > 0);
   $('#repBadge').textContent = S.repeat === 2 ? '1' : '';
@@ -1426,6 +1447,7 @@ $('#npFav').addEventListener('click', () => { if(S.curId != null) toggleFav(S.cu
 
 /* ================= Play queue ================= */
 function syncQueueBadge(){
+  remPush();
   const b = $('#qBadge'); b.classList.toggle('hidden', !S.upNext.length); b.textContent = S.upNext.length;
 }
 const inQueue = id => S.upNext.includes(id);
@@ -2259,6 +2281,7 @@ async function addFilesToFolder(list){
   }
   renderAll(); updateStorage();
   toast(dupMessage(ok, fail, dups, ' to the folder'), false, dups.length ? 7000 : 2600);
+  return {ok, fail, dups};
 }
 async function openMusicFolder(){
   try{ await TAURI.opener.openPath(MUSIC_DIR); }
@@ -2629,6 +2652,210 @@ function openTheme(){
     });
 }
 
+/* ================= phone remote (the web server lives in remote.rs) ================= */
+// A page on the local network lets a phone control playback and add songs. This block is the bridge:
+// it publishes the player state to the server, and runs the commands that arrive from the phone.
+var REM = {on: false, gen: 0, info: null, cfg: Object.assign({on: false, port: 47890, token: ''}, store.get('mp_remote', {})), coverFor: undefined, libJson: '', libT: 0, stT: 0, tick: 0};
+const remInvoke = (c, a) => TAURI.core.invoke(c, a);
+const remSave = () => store.set('mp_remote', REM.cfg);
+function remNewToken(){
+  const b = new Uint8Array(16); crypto.getRandomValues(b);
+  return [...b].map(x => x.toString(16).padStart(2, '0')).join('');
+}
+function remLink(ip){ return 'http://' + ip + ':' + REM.info.port + '/r/' + REM.cfg.token + '/'; }
+function remSend(kind, data){ if(REM.on) remInvoke('remote_push', {kind, data}).catch(e => console.warn('remote', e)); }
+function remNotice(msg){ remSend('notice', msg); }
+
+function remState(){
+  const t = S.tracks.get(S.curId), d = curDur();
+  return JSON.stringify({
+    id: t ? t.id : null, title: t ? t.title : '', artist: t ? t.artist : '', album: t ? t.album : '',
+    playing: !!S.playing, t: +(audio.currentTime || 0).toFixed(1), d: +(d || 0).toFixed(1),
+    vol: +audio.volume.toFixed(2), muted: !!audio.muted, shuffle: !!S.shuffle, repeat: S.repeat, fav: !!(t && t.fav),
+    up: S.upNext.slice(0, 100)
+  });
+}
+// coalesced: many events in a row become one message
+function remPush(){
+  if(!REM.on || REM.stT) return;
+  REM.stT = setTimeout(() => { REM.stT = 0; if(REM.on) remSend('state', remState()); }, 120);
+}
+function remLibrary(){
+  const tracks = [];
+  for(const t of S.tracks.values()) tracks.push({id: t.id, t: t.title, a: t.artist || '', al: t.album || '', d: Math.round(t.duration || 0), f: t.fav ? 1 : 0});
+  return JSON.stringify({
+    tracks,
+    playlists: S.playlists.map(p => ({id: p.id, n: p.name, ids: p.trackIds.filter(i => S.tracks.has(i))})),
+    theme: {accent: theme.accent, bg: theme.bg, panel: theme.panel, text: theme.text}
+  });
+}
+function remLibDirty(){
+  if(!REM.on || REM.libT) return;
+  REM.libT = setTimeout(() => {
+    REM.libT = 0; if(!REM.on) return;
+    const j = remLibrary();
+    if(j !== REM.libJson){ REM.libJson = j; remSend('library', j); }
+  }, 700);
+}
+// small JPEG of the current cover for the phone
+async function remCover(){
+  if(!REM.on || REM.coverFor === S.curId) return;
+  const id = S.curId; REM.coverFor = id;
+  let bytes = [];
+  try{
+    const t = S.tracks.get(id);
+    const blob = t && t.hasCover ? await dbGet('covers', id) : null;
+    if(blob){
+      const bmp = await createImageBitmap(blob);
+      const k = Math.min(1, 320 / Math.max(bmp.width, bmp.height));
+      const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(bmp.width * k)); c.height = Math.max(1, Math.round(bmp.height * k));
+      c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height); bmp.close && bmp.close();
+      const out = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.8));
+      if(out) bytes = Array.from(new Uint8Array(await out.arrayBuffer()));
+    }
+  }catch(e){ console.warn('remote cover', e); }
+  if(REM.on && S.curId === id) remInvoke('remote_cover', {bytes}).catch(() => {});
+}
+async function remStart(){
+  if(!FOLDER) throw new Error('The phone remote works in the Windows app only');
+  if(!REM.cfg.token || REM.cfg.token.length < 32) REM.cfg.token = remNewToken();
+  const gen = ++REM.gen;
+  REM.info = await remInvoke('remote_start', {port: REM.cfg.port, token: REM.cfg.token});
+  REM.on = true; REM.cfg.on = true; REM.cfg.port = REM.info.port; remSave();
+  REM.coverFor = undefined; REM.libJson = '';
+  $('#btnRemote').classList.add('live');
+  clearInterval(REM.tick);
+  REM.tick = setInterval(() => { if(REM.on && S.playing) remPush(); }, 2000);   // keeps the phone's clock in step
+  remLibDirty(); remPush(); remCover();
+  remLoop(gen);
+  return REM.info;
+}
+async function remStop(){
+  REM.on = false; REM.cfg.on = false; REM.gen++; remSave();
+  clearInterval(REM.tick); clearTimeout(REM.stT); clearTimeout(REM.libT); REM.stT = REM.libT = 0;
+  $('#btnRemote').classList.remove('live');
+  try{ await remInvoke('remote_stop'); }catch(e){ console.warn(e); }
+}
+async function remLoop(gen){
+  while(REM.on && REM.gen === gen){
+    try{
+      const cmds = await remInvoke('remote_poll', {timeoutMs: 25000});
+      if(!REM.on || REM.gen !== gen) return;
+      for(const c of cmds){ try{ await remExec(JSON.parse(c)); }catch(e){ console.warn('remote command', e); } }
+    }catch(e){ console.warn('remote poll', e); await sleep(1500); }
+  }
+}
+const remNum = (v, lo, hi) => Number.isFinite(+v) ? Math.min(hi, Math.max(lo, +v)) : null;
+function remIds(c){
+  const g = id => S.tracks.get(id);
+  let ids;
+  if(c.src === 'pl'){ const p = getPl(+c.pl); ids = p ? p.trackIds.filter(i => S.tracks.has(i)) : []; }
+  else { ids = [...S.tracks.keys()]; if(c.src === 'fav') ids = ids.filter(i => g(i).fav); }
+  const q = String(c.q || '').trim().toLowerCase();
+  if(q) ids = ids.filter(i => { const t = g(i); return (t.title + ' ' + t.artist + ' ' + t.album).toLowerCase().includes(q); });
+  if(c.src !== 'pl'){
+    if(c.sort === 'title') ids.sort((a, b) => col.compare(g(a).title, g(b).title));
+    else if(c.sort === 'artist') ids.sort((a, b) => col.compare(g(a).artist, g(b).artist));
+    else ids.sort((a, b) => b - a);
+  }
+  return ids;
+}
+async function remExec(c){
+  switch(c && c.op){
+    case 'toggle': togglePlay(); break;
+    case 'play': if(S.curId != null && !S.playing) togglePlay(); break;
+    case 'pause': audio.pause(); break;
+    case 'next': next(false); break;
+    case 'prev': prev(); break;
+    case 'seek': { const t = remNum(c.t, 0, curDur() || 1e9); if(t != null && S.curId != null) audio.currentTime = t; break; }
+    case 'skip': { const d = remNum(c.d, -600, 600); if(d != null && S.curId != null) audio.currentTime = Math.min(Math.max(0, audio.currentTime + d), curDur() || 1e9); break; }
+    case 'vol': { const v = remNum(c.v, 0, 1); if(v != null){ volEl.value = v; volEl.dispatchEvent(new Event('input')); } break; }
+    case 'mute': $('#btnMute').click(); break;
+    case 'shuffle': $('#btnShuffle').click(); break;
+    case 'repeat': $('#btnRepeat').click(); break;
+    case 'fav': if(S.curId != null) await toggleFav(S.curId); break;
+    case 'playTrack': {
+      const id = +c.id; if(!S.tracks.has(id)) break;
+      const ids = remIds(c); playList(ids.includes(id) ? ids : [id], id); break;
+    }
+    case 'playPl': { const ids = remIds({src: 'pl', pl: c.pl}); if(ids.length) playList(ids); break; }
+    case 'queue': { const id = +c.id; if(S.tracks.has(id)) enqueue(id, !!c.next); break; }
+    case 'dequeue': { const id = +c.id; if(inQueue(id)) dequeue(id); break; }
+    case 'upload': await remImport(String(c.path || ''), String(c.name || '')); break;
+  }
+  remPush();
+}
+// a file the phone sent (or a link the PC downloaded): same checks as adding from the app
+async function remImport(path, name){
+  let msg;
+  name = name.replace(/[\\/:*?"<>|\x00-\x1f]/g, '_').trim().slice(0, 150);
+  // only files the server itself saved in <app data>/incoming are ever read or deleted here
+  const norm = x => String(x).replace(/\\/g, '/').toLowerCase();
+  const inc = norm(MUSIC_DIR.replace(/[\\/]Music$/, '')) + '/incoming/';
+  if(!norm(path).startsWith(inc) || norm(path).split('/').includes('..')){ console.warn('remote: refused path', path); return; }
+  try{
+    if(!AUDIO_RE.test(name)) throw new Error('not an audio file');
+    const f = new File([await FS.readFile(path)], name, {type: 'audio/*'});
+    const r = await addFilesToFolder([f]);
+    msg = r.ok ? 'Added: ' + name : r.dups.length ? 'Already in your library: ' + name : 'Could not add: ' + name;
+  }catch(e){ msg = 'Could not add ' + name + ': ' + ((e && e.message) || e); }
+  try{ await FS.remove(path); }catch(e){}
+  remNotice(msg);
+}
+
+function openRemote(){
+  const draw = async m => {
+    const box = m.querySelector('#rmBody');
+    if(!REM.on){
+      box.innerHTML = '<div class="rm-note">Control the player from your phone and add songs to your music folder. Your phone and this computer must be on the same Wi-Fi or network. The phone needs no app, just the camera and a browser.</div>';
+    } else {
+      const ips = REM.info.addrs || [];
+      const sel = m.querySelector('#rmIp') ? m.querySelector('#rmIp').value : ips[0];
+      const ip = ips.includes(sel) ? sel : ips[0];
+      if(!ip){
+        box.innerHTML = '<div class="rm-note">No network address was found. Connect this computer to Wi-Fi or a network, then turn this off and on again.</div>';
+        return;
+      }
+      let svg = ''; try{ svg = await remInvoke('remote_qr', {text: remLink(ip)}); }catch(e){ console.warn(e); }
+      if(!m.isConnected) return;
+      box.innerHTML = '<div class="rm-qr">' + svg + '</div>' +
+        '<div class="rm-note" style="text-align:center">Scan this with your phone camera and open the link.</div>' +
+        '<div class="rm-url"><input class="inp" id="rmLink" readonly value="' + esc(remLink(ip)) + '"><button class="btn" id="rmCopy">Copy</button></div>' +
+        (ips.length > 1 ? '<div class="rm-note">Several network addresses found. If the phone cannot open the link, try another:<br><select class="sel" id="rmIp">' + ips.map(a => '<option' + (a === ip ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></div>' : '<select id="rmIp" class="hidden"><option>' + esc(ip) + '</option></select>') +
+        '<div class="rm-note">The first time, Windows may ask to allow this app on the network: choose <b>Allow</b> (private networks). Anyone with this link can control the player, so keep it to yourself. “New link” cancels the old one.</div>' +
+        '<div class="actions" style="margin-top:8px"><button class="btn" id="rmNew">New link</button></div>';
+    }
+    const sw = m.querySelector('#rmSwitch');
+    sw.textContent = REM.on ? 'Turn off' : 'Turn on'; sw.classList.toggle('primary', !REM.on);
+    m.querySelector('#rmState').textContent = REM.on ? 'On · port ' + REM.info.port : 'Off';
+  };
+  openModal('<h3>Phone remote</h3>' +
+    '<div class="rm-switch"><b id="rmState"></b><button class="btn" id="rmSwitch"></button></div><div id="rmBody"></div>' +
+    '<div class="actions"><button class="btn primary" data-close>Done</button></div>',
+    m => {
+      draw(m);
+      m.querySelector('#rmSwitch').onclick = async () => {
+        try{
+          if(REM.on) await remStop(); else await remStart();
+        }catch(e){ console.error(e); toast('Couldn\'t start the phone remote: ' + ((e && e.message) || e), false, 8000); }
+        draw(m);
+      };
+      m.addEventListener('click', async e => {
+        if(e.target.closest('#rmCopy')){
+          const inp = m.querySelector('#rmLink'); inp.select();
+          try{ await navigator.clipboard.writeText(inp.value); toast('Link copied'); }catch(_){ document.execCommand && document.execCommand('copy'); toast('Link copied'); }
+        } else if(e.target.closest('#rmNew')){
+          if(!await askConfirm('Create a new link? The old link and QR code will stop working.', 'New link')) return;
+          REM.cfg.token = remNewToken(); remSave();
+          try{ await remStart(); }catch(err){ toast('Couldn\'t restart: ' + ((err && err.message) || err), false, 6000); }
+          if(m.isConnected) draw(m);
+        }
+      });
+      m.addEventListener('change', e => { if(e.target.id === 'rmIp') draw(m); });
+    });
+}
+$('#btnRemote').addEventListener('click', openRemote);
+
 /* ================= init ================= */
 (async function init(){
   if(FS){
@@ -2641,7 +2868,7 @@ function openTheme(){
       FOLDER = true;
       DATA_DIR = base.replace(/[\\/]+$/, '') + SEP + 'data';
       try{ await FS.mkdir(DATA_DIR + SEP + 'covers', {recursive: true}); }catch(e){ console.warn('data dir', e); }
-      $('#btnBackup').classList.remove('hidden'); $('#btnLyrics').classList.remove('hidden');
+      $('#btnBackup').classList.remove('hidden'); $('#btnLyrics').classList.remove('hidden'); $('#btnRemote').classList.remove('hidden');
     }catch(e){ console.error(e); toast('Couldn\'t create the music folder: ' + ((e && e.message) || e), false, 9000); }
   }
   document.querySelectorAll('[data-icon]').forEach(n => { n.innerHTML = icon(n.dataset.icon, n.classList.contains('fillicon') ? 'fill' : ''); });
@@ -2687,6 +2914,7 @@ function openTheme(){
     BK.ready = true;
     let has = true; try{ has = await FS.exists(libPath()); }catch(e){}
     if(BK.dirty || !has) scheduleBackup();
+    if(REM.cfg.on) remStart().catch(e => { console.warn(e); REM.cfg.on = false; remSave(); toast('Phone remote could not start: ' + ((e && e.message) || e), false, 7000); });
   }
 })();
 
