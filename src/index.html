@@ -257,6 +257,7 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
 .pick:hover{background:var(--panel2)}
 .pick span{flex:1}
 .pick small{color:var(--muted)}
+.np-auto{margin-bottom:12px}.np-auto .btn{margin-bottom:6px}
 .sep-or{display:flex;align-items:center;gap:10px;margin:16px 0 12px;color:var(--muted);font-size:12px}
 .sep-or::before,.sep-or::after{content:"";flex:1;height:1px;background:var(--line)}
 .newpl{display:flex;gap:8px}
@@ -1890,37 +1891,45 @@ function openAddToPlaylist(trackId){
     });
 }
 
-/* ---- new playlist: by name, or one playlist per album found in the songs' details ---- */
+/* ---- new playlist: by name, or one playlist per album / per artist found in the songs' details ---- */
 const albumKey = a => String(a || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
-function collectAlbums(){
-  const map = new Map();
-  let noAlbum = 0;
+const GROUPS = {
+  album: {field: 'album', one: 'album', many: 'albums', none: 'album'},
+  artist: {field: 'artist', one: 'artist', many: 'artists', none: 'artist'}
+};
+// groups the songs by album or by artist (same spelling apart from case and extra spaces = same group)
+function collectGroups(kind){
+  const f = GROUPS[kind].field, map = new Map();
+  let skipped = 0;
   for(const [id, t] of S.tracks){
-    const k = albumKey(t.album);
-    if(!k){ noAlbum++; continue; }
+    const k = albumKey(t[f]);
+    if(!k){ skipped++; continue; }
     let a = map.get(k); if(!a){ a = {key: k, ids: [], names: new Map()}; map.set(k, a); }
     a.ids.push(id);
-    const nm = t.album.trim().replace(/\s+/g, ' '); a.names.set(nm, (a.names.get(nm) || 0) + 1);
+    const nm = t[f].trim().replace(/\s+/g, ' '); a.names.set(nm, (a.names.get(nm) || 0) + 1);
   }
+  const byFile = (x, y) => col.compare(S.tracks.get(x).file || '', S.tracks.get(y).file || '') || col.compare(S.tracks.get(x).title, S.tracks.get(y).title);
   const list = [...map.values()].map(a => {
     a.name = [...a.names.entries()].sort((x, y) => y[1] - x[1])[0][0];
-    // album order: by file name (usually “01 - …”), then title
-    a.ids.sort((x, y) => col.compare(S.tracks.get(x).file || '', S.tracks.get(y).file || '') || col.compare(S.tracks.get(x).title, S.tracks.get(y).title));
+    // album: by file name (usually “01 - …”); artist: by album first, then by file name
+    a.ids.sort(kind === 'artist' ? (x, y) => col.compare(albumKey(S.tracks.get(x).album), albumKey(S.tracks.get(y).album)) || byFile(x, y) : byFile);
     return a;
   }).sort((x, y) => col.compare(x.name, y.name));
-  return {list, noAlbum};
+  return {list, skipped};
 }
 function openNewPlaylist(){
-  const {list} = collectAlbums();
-  const multi = list.filter(a => a.ids.length > 1).length;
+  const al = collectGroups('album').list, ar = collectGroups('artist').list;
+  const cnt = l => l.filter(a => a.ids.length > 1).length;
+  const btn = (id, kind, l) => '<button class="btn" id="' + id + '"' + (l.length ? '' : ' disabled') + '>' + icon('list') + ' Create playlists from ' + GROUPS[kind].many + '…</button>';
+  const hint = (kind, l) => l.length
+    ? 'One playlist per ' + GROUPS[kind].one + ', named after the ' + GROUPS[kind].one + ' and filled with its songs (' + plural(cnt(l), GROUPS[kind].one) + ' with more than one song).'
+    : 'No song has ' + (kind === 'album' ? 'an album' : 'an artist') + ' in its details yet. Set it with “Edit details”.';
   openModal('<h3>New playlist</h3>' +
     '<input class="inp" id="npName" dir="auto" maxlength="80" placeholder="Playlist name…">' +
     '<div class="actions"><button class="btn primary" id="npMake">Create</button><button class="btn" data-close>Cancel</button></div>' +
     '<div class="sep-or"><span>or</span></div>' +
-    '<button class="btn" id="npAlbums"' + (list.length ? '' : ' disabled') + '>' + icon('list') + ' Create playlists from albums…</button>' +
-    '<div class="muted small" style="margin-top:8px">' + (list.length
-      ? 'One playlist per album, named after the album and filled with its songs (' + plural(multi, 'album') + ' with more than one song).'
-      : 'No song has an album in its details yet. Set the album with “Edit details”.') + '</div>',
+    '<div class="np-auto">' + btn('npAlbums', 'album', al) + '<div class="muted small">' + hint('album', al) + '</div></div>' +
+    '<div class="np-auto">' + btn('npArtists', 'artist', ar) + '<div class="muted small">' + hint('artist', ar) + '</div></div>',
     (m, close) => {
       const inp = m.querySelector('#npName'); inp.focus();
       const make = async () => {
@@ -1929,25 +1938,27 @@ function openNewPlaylist(){
       };
       m.querySelector('#npMake').onclick = make;
       inp.addEventListener('keydown', e => { if(e.key === 'Enter') make(); });
-      m.querySelector('#npAlbums').onclick = () => { close(); openAlbumPlaylists(); };
+      m.querySelector('#npAlbums').onclick = () => { close(); openGroupPlaylists('album'); };
+      m.querySelector('#npArtists').onclick = () => { close(); openGroupPlaylists('artist'); };
     });
 }
-function openAlbumPlaylists(){
-  const {list, noAlbum} = collectAlbums();
+function openGroupPlaylists(kind){
+  const G = GROUPS[kind];
+  const {list, skipped} = collectGroups(kind);
   const exist = a => S.playlists.find(p => albumKey(p.name) === a.key);
   const sel = new Set(list.filter(a => a.ids.length > 1).map(a => a.key));
   let showSingles = false;
-  openModal('<h3>Playlists from albums</h3>' +
+  openModal('<h3>Playlists from ' + G.many + '</h3>' +
     '<div class="muted small" id="alInfo"></div>' +
     '<div id="alList" class="pick-list" style="max-height:min(360px,50vh)"></div>' +
-    '<label class="pick" style="padding:6px 10px"><input type="checkbox" id="alSingles"><span>Also show albums with only one song</span></label>' +
+    '<label class="pick" style="padding:6px 10px"><input type="checkbox" id="alSingles"><span>Also show ' + G.many + ' with only one song</span></label>' +
     '<div class="actions"><button class="btn primary" id="alMake" disabled>Create</button><button class="btn" id="alAll">Select all</button><button class="btn" id="alNone">Select none</button><button class="btn" data-close>Cancel</button></div>',
     (m, close) => {
       const shown = () => list.filter(a => showSingles || a.ids.length > 1);
       const draw = () => {
         const sh = shown();
-        m.querySelector('#alInfo').textContent = (sh.length ? 'Pick the albums to turn into playlists. If a playlist with the album’s name already exists, the missing songs are added to it.' : 'No album has more than one song.') +
-          (noAlbum ? ' Songs without an album are skipped (' + noAlbum + ').' : '');
+        m.querySelector('#alInfo').textContent = (sh.length ? 'Pick the ' + G.many + ' to turn into playlists. If a playlist with the ' + G.one + '’s name already exists, the missing songs are added to it.' : 'No ' + G.one + ' has more than one song.') +
+          (skipped ? ' Songs without ' + (kind === 'album' ? 'an album' : 'an artist') + ' are skipped (' + skipped + ').' : '');
         m.querySelector('#alList').innerHTML = sh.map(a => {
           const ex = exist(a);
           return '<label class="pick"><input type="checkbox" data-k="' + esc(a.key) + '"' + (sel.has(a.key) ? ' checked' : '') + '><span dir="auto">' + esc(a.name) + '</span>' +
