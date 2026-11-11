@@ -3208,6 +3208,20 @@ async function restoreResume(){
   $('#tDur').textContent = fmt(d); $('#tCur').textContent = fmt(audio.currentTime);
   $('#seek').value = d ? Math.min(1000, audio.currentTime / d * 1000) : 0;
 }
+/* ---------- tray icon (Windows app): the window's close button only hides it, the tray menu controls playback ---------- */
+async function trayQuit(){
+  try{ saveResume(); if(BK.ready && BK.dirty) await saveBackup(); }catch(e){ console.warn(e); }
+  try{ await TAURI.core.invoke('quit_app'); }catch(e){ console.warn(e); }
+}
+if(IS_APP && TAURI.event && TAURI.event.listen){
+  TAURI.event.listen('tray-cmd', e => {
+    const c = e && e.payload;
+    if(c === 'toggle') togglePlay();
+    else if(c === 'prev') prev();
+    else if(c === 'next') next(false);
+    else if(c === 'quit') trayQuit();
+  }).catch(err => console.warn('tray events', err));
+}
 window.addEventListener('pagehide', saveResume);
 document.addEventListener('visibilitychange', () => { if(document.hidden) saveResume(); });
 </script>

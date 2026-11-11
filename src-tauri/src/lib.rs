@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_fs::FsExt;
 
@@ -239,6 +239,66 @@ fn remote_qr(text: String) -> Result<String, String> {
     remote::qr_svg(&text)
 }
 
+// ---------- tray icon: closing the window keeps the app (and the music) running ----------
+#[cfg(desktop)]
+fn show_main(app: &tauri::AppHandle) {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.unminimize();
+        let _ = w.show();
+        let _ = w.set_focus();
+    }
+}
+
+#[cfg(desktop)]
+fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
+    use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+    use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+    let show = MenuItem::with_id(app, "show", "Show My Music Player", true, None::<&str>)?;
+    let toggle = MenuItem::with_id(app, "toggle", "Play / Pause", true, None::<&str>)?;
+    let prev = MenuItem::with_id(app, "prev", "Previous", true, None::<&str>)?;
+    let next = MenuItem::with_id(app, "next", "Next", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+    let sep1 = PredefinedMenuItem::separator(app)?;
+    let sep2 = PredefinedMenuItem::separator(app)?;
+    let menu = Menu::with_items(app, &[&show, &sep1, &toggle, &prev, &next, &sep2, &quit])?;
+    let mut tray = TrayIconBuilder::with_id("main")
+        .tooltip("My Music Player")
+        .menu(&menu)
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, event| match event.id.as_ref() {
+            "show" => show_main(app),
+            "toggle" | "prev" | "next" => {
+                let _ = app.emit("tray-cmd", event.id.as_ref());
+            }
+            "quit" => {
+                // the page saves its state first and then calls quit_app; exit anyway if it does not answer
+                let _ = app.emit("tray-cmd", "quit");
+                let h = app.clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(Duration::from_secs(4));
+                    h.exit(0);
+                });
+            }
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = event {
+                show_main(tray.app_handle());
+            }
+        });
+    if let Some(icon) = app.default_window_icon() {
+        tray = tray.icon(icon.clone());
+    }
+    tray.build(app)?;
+    Ok(())
+}
+
+/// The page calls this when the user chose Quit in the tray menu (after saving its state).
+#[tauri::command]
+fn quit_app(app: tauri::AppHandle) {
+    app.exit(0);
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let mut builder = tauri::Builder::default();
@@ -278,9 +338,21 @@ pub fn run() {
                 let _ = allow_music_dir(&handle, &dir);
             }
             app.manage(MusicDir { cur: Mutex::new(dir), prev: Mutex::new(None) });
+            #[cfg(desktop)]
+            setup_tray(app)?;
             Ok(())
         })
+        // The window's close button only hides it; the music keeps playing. Quit is in the tray menu.
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if window.label() == "main" {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
+        })
         .invoke_handler(tauri::generate_handler![
+            quit_app,
             move_to_trash,
             music_dir_info,
             pick_music_folder,
