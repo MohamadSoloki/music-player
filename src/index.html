@@ -258,7 +258,12 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
 .pick:hover{background:var(--panel2)}
 .pick span{flex:1}
 .pick small{color:var(--muted)}
-.np-auto{margin-bottom:12px}.np-auto .btn{margin-bottom:6px}
+.np-row{display:flex;gap:10px}
+.np-auto{flex:1;min-width:0;display:flex;gap:6px}
+.np-auto .btn:first-child{flex:1;min-width:0;justify-content:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.np-auto .btn.ico{flex:none}
+.np-auto .btn.ico.on{border-color:var(--accent);color:var(--accent2)}
+#npTip{margin-top:10px;padding:8px 10px;border-radius:8px;background:var(--panel2);line-height:1.7}
 .sep-or{display:flex;align-items:center;gap:10px;margin:16px 0 12px;color:var(--muted);font-size:12px}
 .sep-or::before,.sep-or::after{content:"";flex:1;height:1px;background:var(--line)}
 .newpl{display:flex;gap:8px}
@@ -1964,7 +1969,8 @@ function collectGroups(kind){
 function openNewPlaylist(){
   const al = collectGroups('album').list, ar = collectGroups('artist').list;
   const cnt = l => l.filter(a => a.ids.length > 1).length;
-  const btn = (id, kind, l) => '<button class="btn" id="' + id + '"' + (l.length ? '' : ' disabled') + '>' + icon('list') + ' Create playlists from ' + GROUPS[kind].many + '…</button>';
+  const btn = (id, kind, l) => '<button class="btn" id="' + id + '"' + (l.length ? '' : ' disabled') + '>Playlists from ' + GROUPS[kind].many + '…</button>' +
+    '<button class="btn ico" id="' + id + 'Info" aria-label="What does this do?" aria-expanded="false" title="What does this do?">' + icon('list') + '</button>';
   const hint = (kind, l) => l.length
     ? 'One playlist per ' + GROUPS[kind].one + ', named after the ' + GROUPS[kind].one + ' and filled with its songs (' + plural(cnt(l), GROUPS[kind].one) + ' with more than one song).'
     : 'No song has ' + (kind === 'album' ? 'an album' : 'an artist') + ' in its details yet. Set it with “Edit details”.';
@@ -1972,8 +1978,8 @@ function openNewPlaylist(){
     '<input class="inp" id="npName" dir="auto" maxlength="80" placeholder="Playlist name…">' +
     '<div class="actions"><button class="btn primary" id="npMake">Create</button><button class="btn" data-close>Cancel</button></div>' +
     '<div class="sep-or"><span>or</span></div>' +
-    '<div class="np-auto">' + btn('npAlbums', 'album', al) + '<div class="muted small">' + hint('album', al) + '</div></div>' +
-    '<div class="np-auto">' + btn('npArtists', 'artist', ar) + '<div class="muted small">' + hint('artist', ar) + '</div></div>',
+    '<div class="np-row"><div class="np-auto">' + btn('npAlbums', 'album', al) + '</div><div class="np-auto">' + btn('npArtists', 'artist', ar) + '</div></div>' +
+    '<div class="muted small hidden" id="npTip" aria-live="polite"></div>',
     (m, close) => {
       const inp = m.querySelector('#npName'); inp.focus();
       const make = async () => {
@@ -1984,6 +1990,18 @@ function openNewPlaylist(){
       inp.addEventListener('keydown', e => { if(e.key === 'Enter') make(); });
       m.querySelector('#npAlbums').onclick = () => { close(); openGroupPlaylists('album'); };
       m.querySelector('#npArtists').onclick = () => { close(); openGroupPlaylists('artist'); };
+      // the three-line buttons show or hide the explanation under the buttons
+      const tip = m.querySelector('#npTip'); let open = null;
+      for(const [kind, id, l] of [['album', 'npAlbums', al], ['artist', 'npArtists', ar]]){
+        m.querySelector('#' + id + 'Info').onclick = () => {
+          open = open === kind ? null : kind;
+          tip.textContent = open ? hint(open, open === 'album' ? al : ar) : '';
+          tip.classList.toggle('hidden', !open);
+          for(const [k, i] of [['album', 'npAlbums'], ['artist', 'npArtists']]){
+            const b = m.querySelector('#' + i + 'Info'); b.classList.toggle('on', open === k); b.setAttribute('aria-expanded', open === k);
+          }
+        };
+      }
     });
 }
 function openGroupPlaylists(kind){
