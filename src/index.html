@@ -236,6 +236,7 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
 /* ---- app update ---- */
 .upd{display:flex;align-items:center;gap:12px;margin:12px 20px 0;padding:10px 14px;border-radius:12px;background:var(--accent-soft);border:1px solid var(--accent)}
 .upd .grow{flex:1}
+.upd .btn{white-space:nowrap;flex-shrink:0}
 .upd.err{background:rgba(255,93,108,.12);border-color:var(--danger)}
 .upd-prog{flex:1;height:8px;border-radius:6px;background:var(--line);overflow:hidden;direction:ltr}
 .upd-prog i{display:block;height:100%;width:0;background:var(--accent2);transition:width .2s}
@@ -300,6 +301,7 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
 
   <main id="main">
     <div id="updBar" class="upd hidden"></div>
+    <div id="folderBar" class="upd err hidden"></div>
     <header class="top">
       <div>
         <h1 id="viewTitle">All songs</h1>
@@ -423,7 +425,9 @@ const TAURI = window.__TAURI__;
 const IS_APP = !!(TAURI && TAURI.updater);
 const FS = (TAURI && TAURI.fs && TAURI.path && TAURI.core) ? TAURI.fs : null;
 const AUDIO_RE = /\.(mp3|m4a|flac|wav|ogg|oga|opus|aac|webm|wma)$/i;
-let FOLDER = false, MUSIC_DIR = '', DATA_DIR = '', SEP = '\\';
+let FOLDER = false, MUSIC_DIR = '', APP_DIR = '', DATA_DIR = '', SEP = '\\';
+// music folder state: custom = not the default folder, missing = the folder can't be found right now, busy = songs are being moved
+const MUSIC = {custom: false, missing: false, busy: false, def: ''};
 const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const fullPath = rel => MUSIC_DIR + SEP + rel.split('/').join(SEP);
@@ -466,6 +470,7 @@ const ICONS = {
   refresh:'<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
   lyrics:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="13" y2="12"/>',
   phone:'<rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>',
+  gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
   folder:'<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
   palette:'<circle cx="13.5" cy="6.5" r="1"/><circle cx="17.5" cy="10.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/><circle cx="6.5" cy="12.5" r="1"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>'
 };
@@ -2136,6 +2141,7 @@ async function removeTrackRecord(id){
 }
 async function deleteTrack(id){
   const t = S.tracks.get(id); if(!t) return;
+  if(MUSIC.busy){ toast('Songs are being moved. Try again when it is finished.'); return; }
   const msg = FOLDER
     ? 'Delete “' + t.title + '”? The file will be moved to the Windows Recycle Bin, where you can restore it.'
     : 'Remove “' + t.title + '” from the library and all playlists?';
@@ -2218,32 +2224,57 @@ async function importDiskFile(rel, fileObj){
   if(cover){ putCoverUrl(meta.id, cover); BK.dirtyCovers.add(meta.id); }
   return true;
 }
-let scanning = false;
+let scanning = false, PENDING_LIB = null;
 function setRefreshBusy(b){ const el = $('#btnRefresh'); if(!el) return; el.disabled = b; el.classList.toggle('spin', b); }
-// reads the folder: adds new songs and removes songs whose file no longer exists
-async function scanFolder(manual){
-  if(!FOLDER || scanning) return;
+/* ---------- where the music folder is ---------- */
+function drawFolderBar(){
+  const b = $('#folderBar');
+  if(!FOLDER || !MUSIC.missing){ b.className = 'upd err hidden'; b.innerHTML = ''; return; }
+  b.className = 'upd err';
+  b.innerHTML = '<span>The music folder was not found: <b dir="ltr">' + esc(MUSIC_DIR) + '</b><br>It may have been moved, renamed or deleted, or its drive is not connected. Your library is kept as it is.</span><span class="grow"></span>' +
+    '<button class="btn sm" id="fbRetry">Try again</button><button class="btn primary sm" id="fbChoose">Choose folder…</button>' +
+    (MUSIC.custom ? '<button class="btn sm" id="fbDef">Use default folder</button>' : '<button class="btn sm" id="fbCreate">Create it again</button>');
+}
+// is the music folder there right now? (updates the red bar)
+async function checkFolder(){
+  if(!FOLDER) return true;
+  let ok = false;
+  try{ ok = await FS.exists(MUSIC_DIR); }catch(e){ console.warn(e); }
+  MUSIC.missing = !ok;
+  drawFolderBar();
+  return ok;
+}
+// reads the folder: adds new songs and removes songs whose file no longer exists.
+// force = the user already agreed to the removals (after choosing another folder)
+async function scanFolder(manual, force){
+  if(!FOLDER || scanning || MUSIC.busy) return;
+  if(!await checkFolder()){ if(manual) toast('The music folder was not found. Choose it again, or reconnect its drive.', false, 5000); return; }
   scanning = true; setRefreshBusy(true);
-  let added = 0, removed = 0, pending = 0;
+  let added = 0, removed = 0, pending = 0, skippedGone = 0, shown = false;
   try{
     const files = [];
     await listDisk(MUSIC_DIR, '', 0, files);
     if(files.stale && !tagWriting){ for(const r of files.stale){ try{ await FS.remove(fullPath(r)); }catch(e){} } }
     const onDisk = new Set(files);
     const withFile = [...S.tracks.values()].filter(t => t.file);
+    const gone = withFile.filter(t => !onDisk.has(t.file));
     let doRemove = true;
     if(!files.length && withFile.length){
       // empty folder: it may have been deleted or changed; do not empty the library without asking
-      doRemove = manual && await askConfirm('The music folder is empty. Remove all songs from the library (and from playlists)?', 'Delete');
+      doRemove = !!force || (manual && await askConfirm('The music folder is empty. Remove all songs from the library (and from playlists)?', 'Delete'));
+    } else if(!force && gone.length >= 5 && gone.length * 2 >= withFile.length){
+      // many songs vanished at once: probably a moved or swapped folder, not songs deleted one by one
+      doRemove = manual && await askConfirm(plural(gone.length, 'song') + ' of your ' + withFile.length + ' are no longer in the music folder. Remove them from the library (and from playlists)? No files are touched.', 'Remove');
     }
     const known = new Set();
     for(const t of withFile){
       if(onDisk.has(t.file)) known.add(t.file);
       else if(doRemove){ await removeTrackRecord(t.id); removed++; }
+      else skippedGone++;
     }
     const fresh = files.filter(r => !known.has(r));
     for(let i = 0; i < fresh.length; i++){
-      if(manual || fresh.length > 3) toast('Adding ' + (i + 1) + ' of ' + fresh.length + '…', true);
+      if(manual || fresh.length > 3){ toast('Adding ' + (i + 1) + ' of ' + fresh.length + '…', true); shown = true; }
       try{ if(await importDiskFile(fresh[i])) added++; else pending++; }
       catch(e){ console.warn('import failed', fresh[i], e); pending++; }
     }
@@ -2255,14 +2286,34 @@ async function scanFolder(manual){
     scanning = false; setRefreshBusy(false);
   }
   renderAll(); updateStorage();
+  if(PENDING_LIB && S.tracks.size){
+    const l = PENDING_LIB; PENDING_LIB = null;
+    try{ const r = await applyLibrary(l, {settings: true}); renderAll(); updateNowPlaying(); toast('Backup restored: ' + r.tracks + ' songs and ' + r.playlists + ' playlists', false, 6000); }
+    catch(e){ console.error(e); toast('Backup restore failed'); }
+    BK.ready = true; scheduleBackup();
+    return;
+  }
   const parts = [];
   if(added) parts.push(plural(added, 'new song') + ' added');
   if(removed) parts.push(plural(removed, 'song') + ' removed (file no longer in the folder)');
   if(pending) parts.push(plural(pending, 'file') + ' not ready yet; refresh again in a moment');
+  if(skippedGone && !removed) parts.push(plural(skippedGone, 'song') + ' not found in the folder (kept in the library; press Refresh to review)');
   if(parts.length) toast(parts.join(' · '), false, 5000);
   else if(manual) toast('No new songs found in the folder');
-  else $('#toast').classList.remove('show');
+  else if(shown) $('#toast').classList.remove('show');
 }
+// the user changed the folder by hand (moved, renamed, added or removed files): notice when the window gets focus again
+let lastFocusScan = 0;
+window.addEventListener('focus', async () => {
+  if(!FOLDER || MUSIC.busy || scanning || tagWriting) return;
+  if(Date.now() - lastFocusScan < 20000) return;
+  lastFocusScan = Date.now();
+  const was = MUSIC.missing;
+  if(await checkFolder()){
+    if(was) toast('The music folder is back.', false, 3000);
+    await scanFolder(false);
+  }
+});
 async function uniqueName(name){
   name = name.replace(/[\\/:*?"<>|]/g, '_');
   const m = name.match(/^(.*?)(\.[^.]*)?$/);
@@ -2274,6 +2325,8 @@ async function uniqueName(name){
 }
 async function addFilesToFolder(list){
   let ok = 0, fail = 0; const dups = [];
+  if(MUSIC.busy){ toast('Songs are being moved. Try again when it is finished.'); return {ok, fail: list.length, dups}; }
+  if(!await checkFolder()){ toast('The music folder was not found, so nothing was added. Choose the folder first.', false, 6000); return {ok, fail: list.length, dups}; }
   for(let i = 0; i < list.length; i++){
     const f = list[i];
     toast('Adding ' + (i + 1) + ' of ' + list.length + '…', true);
@@ -2295,8 +2348,201 @@ async function addFilesToFolder(list){
   return {ok, fail, dups};
 }
 async function openMusicFolder(){
+  if(!await checkFolder()){ toast('The music folder was not found.'); return; }
   try{ await TAURI.opener.openPath(MUSIC_DIR); }
   catch(e){ console.error(e); toast('Couldn\'t open the folder. Path: ' + MUSIC_DIR, false, 8000); }
+}
+
+
+/* ---------- choose another music folder ---------- */
+const joinPath = (dir, rel) => dir + SEP + rel.split('/').join(SEP);
+const pathLeaf = p => String(p).split(/[\\/]/).filter(Boolean).pop() || p;
+async function sameFileOnDisk(a, b, size){
+  const ra = await diskReader(a), rb = await diskReader(b);
+  try{
+    const CH = 1 << 20;
+    for(let pos = 0; pos < size; pos += CH){
+      const len = Math.min(CH, size - pos);
+      const [x, y] = await Promise.all([ra.rangeReader(pos, len), rb.rangeReader(pos, len)]);
+      if(x.length !== y.length) return false;
+      for(let i = 0; i < x.length; i++) if(x[i] !== y[i]) return false;
+    }
+    return true;
+  } finally{ try{ await ra.close(); }catch(e){} try{ await rb.close(); }catch(e){} }
+}
+// let go of the playing file (Windows locks it) before it is moved or replaced
+async function releaseAudio(){
+  if(S.curId != null){ stopPlayback(); audio.removeAttribute('src'); try{ audio.load(); }catch(e){} S.curId = null; S.qi = -1; updateNowPlaying(); await sleep(200); }
+}
+function openFolderSettings(){
+  if(!FOLDER) return;
+  if(MUSIC.busy){ toast('Songs are being moved. Try again when it is finished.'); return; }
+  openModal('<h3>Music folder</h3>' +
+    '<div class="rm-url"><input class="inp" id="mfPath" readonly value="' + esc(MUSIC_DIR) + '"></div>' +
+    '<div class="rm-note">' + (MUSIC.custom ? 'This is a folder you chose. ' : 'This is the default folder. ') +
+    'Songs are stored here as normal files. If you move or rename the folder yourself, the app notices and asks you to choose it again.' +
+    (MUSIC.missing ? ' <b>The folder was not found right now.</b>' : '') + '</div>' +
+    '<div class="actions"><button class="btn primary" id="mfChange">Change folder…</button><button class="btn" id="mfOpen">Open folder</button>' +
+    (MUSIC.custom ? '<button class="btn" id="mfDef">Use default folder</button>' : '') + '<button class="btn" data-close>Close</button></div>',
+    (m, close) => {
+      m.querySelector('#mfOpen').onclick = openMusicFolder;
+      m.querySelector('#mfChange').onclick = () => { close(); startChangeFolder(); };
+      const d = m.querySelector('#mfDef'); if(d) d.onclick = () => { close(); switchToDefault(); };
+    });
+}
+async function startChangeFolder(){
+  if(MUSIC.busy) return;
+  if(tagWriting){ toast('Wait until the tag is saved, then try again.'); return; }
+  let picked;
+  try{ picked = await TAURI.core.invoke('pick_music_folder'); }
+  catch(e){ toast('Couldn\'t open the folder window: ' + ((e && e.message) || e), false, 6000); return; }
+  if(!picked) return;
+  let c;
+  try{ c = await TAURI.core.invoke('check_music_dir', {path: picked}); }
+  catch(e){ openModal('<h3>This folder can\'t be used</h3><div class="rm-note">' + esc((e && e.message) || e) + '</div><div class="actions"><button class="btn primary" id="mfAgain">Choose another…</button><button class="btn" data-close>Cancel</button></div>',
+    (m, close) => { m.querySelector('#mfAgain').onclick = () => { close(); startChangeFolder(); }; }); return; }
+  if(c.same){ toast('That is already your music folder.'); return; }
+  askSwitchMode(c);
+}
+// the new folder is checked; ask what to do with the songs
+async function askSwitchMode(c){
+  const items = [...S.tracks.values()].filter(t => t.file);
+  const canMove = !MUSIC.missing && items.length > 0;
+  let found = 0, fresh = 0;
+  try{
+    const files = []; await listDisk(c.path, '', 0, files);
+    const set = new Set(files), have = new Set(items.map(t => t.file));
+    found = items.filter(t => set.has(t.file)).length;
+    fresh = files.filter(r => !have.has(r)).length;
+  }catch(e){ console.warn(e); }
+  const gone = items.length - found;
+  openModal('<h3>Use this folder?</h3>' +
+    '<div class="rm-url"><input class="inp" readonly value="' + esc(c.path) + '"></div>' +
+    '<div class="rm-note">It has ' + plural(c.audioFiles, 'audio file') + '. Playback stops while the folder is changed.</div>' +
+    (canMove ? '<div class="rm-switch"><div><b>Move my songs there</b><div class="rm-note">Copies your ' + plural(items.length, 'song') + ' (and their lyrics) into the new folder, then moves the old files to the Recycle Bin. Playlists, covers and play counts are kept.</div></div><button class="btn primary" id="sfMove">Move</button></div>' : '') +
+    '<div class="rm-switch" style="margin-top:8px"><div><b>Use the folder as it is</b><div class="rm-note">Nothing is copied. ' +
+      (items.length ? found + ' of your ' + plural(items.length, 'song') + ' were found there' + (gone ? '; the other ' + gone + ' will be <b>removed from the library</b> (no files are deleted)' : '') + '. ' : '') +
+      (fresh ? plural(fresh, 'new file') + ' there will be added.' : '') + '</div></div><button class="btn' + (canMove ? '' : ' primary') + '" id="sfAsIs">Use it</button></div>' +
+    '<div class="actions"><button class="btn" data-close>Cancel</button></div>',
+    (m, close) => {
+      const mv = m.querySelector('#sfMove'); if(mv) mv.onclick = () => { close(); moveLibraryTo(c.path); };
+      m.querySelector('#sfAsIs').onclick = () => { close(); applyFolder(c.path, {removed: gone}); };
+    });
+}
+// switch to `path` (null = default folder) without copying anything
+async function applyFolder(path, opt){
+  if(MUSIC.busy) return;
+  MUSIC.busy = true;
+  try{
+    await releaseAudio();
+    const dir = await TAURI.core.invoke('save_music_dir', {path});
+    setMusicDir(dir);
+  }catch(e){ MUSIC.busy = false; console.error(e); toast('Couldn\'t change the folder: ' + ((e && e.message) || e), false, 7000); return; }
+  MUSIC.busy = false;
+  await checkFolder();
+  S.queue = []; S.qi = -1; updateNowPlaying();
+  await scanFolder(true, true);
+  toast('Music folder changed to ' + MUSIC_DIR, false, 5000);
+}
+function setMusicDir(dir){
+  MUSIC_DIR = dir.replace(/[\\/]+$/, '') || dir;
+  MUSIC.custom = MUSIC_DIR.replace(/[\\/]+$/, '').toLowerCase() !== MUSIC.def.replace(/[\\/]+$/, '').toLowerCase();
+  lastFocusScan = Date.now();
+}
+async function switchToDefault(){
+  const msg = MUSIC.missing
+    ? 'Go back to the default folder? Songs that are not found there will be removed from the library (no files are deleted).'
+    : 'Go back to the default folder? Your songs stay in the current folder and are not copied. Songs not found in the default folder will be removed from the library.';
+  if(!await askConfirm(msg, 'Use default')) return;
+  try{ await FS.mkdir(MUSIC.def, {recursive: true}); }catch(e){ console.warn(e); }
+  applyFolder(null);
+}
+async function recreateFolder(){
+  try{ await FS.mkdir(MUSIC_DIR, {recursive: true}); }catch(e){ toast('Couldn\'t create the folder: ' + ((e && e.message) || e), false, 6000); return; }
+  await checkFolder();
+  toast('The folder was created again. Put your songs back in it, then press Refresh.', false, 6000);
+}
+// copy every song (and its .lrc) into the new folder, then switch, then move the old files to the Recycle Bin
+async function moveLibraryTo(newDir){
+  if(MUSIC.busy) return;
+  MUSIC.busy = true;
+  const items = [...S.tracks.values()].filter(t => t.file);
+  const copied = [];            // every file created in the new folder (for cleanup)
+  const plan = [];              // {t, newRel, oldPaths}
+  let cancel = false, locked = false, skipped = 0;
+  const close = openModal('<h3>Moving songs…</h3><div class="rm-note" id="mvTxt">Preparing…</div><div class="upd-prog"><i id="mvBar"></i></div><div class="actions"><button class="btn" id="mvCancel">Cancel</button></div>',
+    m => { m.querySelector('#mvCancel').onclick = () => { if(!locked){ cancel = true; m.querySelector('#mvTxt').textContent = 'Cancelling…'; } }; },
+    () => { if(!locked) cancel = true; });
+  const say = (txt, i) => { const a = $('#mvTxt'), b = $('#mvBar'); if(a) a.textContent = txt; if(b) b.style.width = (i == null ? 0 : Math.round(i / Math.max(1, items.length) * 100)) + '%'; };
+  const cleanup = async () => { for(const f of copied.reverse()){ try{ await FS.remove(f); }catch(e){} } };
+  try{
+    await releaseAudio();
+    for(let i = 0; i < items.length; i++){
+      if(cancel){ await cleanup(); close(); MUSIC.busy = false; toast('Cancelled. Nothing was changed.'); return; }
+      const t = items[i];
+      say('Copying ' + (i + 1) + ' of ' + items.length + ': ' + t.title, i);
+      const src = fullPath(t.file);
+      if(!await FS.exists(src)){ skipped++; continue; }
+      const size = (await FS.stat(src)).size;
+      // same relative place in the new folder; on a name clash with a different file, add " (2)"
+      const parts = t.file.split('/'); const leaf = parts.pop(); const dirRel = parts.join('/');
+      const m = leaf.match(/^(.*?)(\.[^.]*)?$/); const base = m[1], ext = m[2] || '';
+      let name = leaf, n = 2, reuse = false;
+      while(true){
+        const dst = joinPath(newDir, (dirRel ? dirRel + '/' : '') + name);
+        if(!await FS.exists(dst)) break;
+        if((await FS.stat(dst)).size === size && await sameFileOnDisk(src, dst, size)){ reuse = true; break; }   // already there from an earlier try
+        name = base + ' (' + (n++) + ')' + ext;
+      }
+      const newRel = (dirRel ? dirRel + '/' : '') + name;
+      const dst = joinPath(newDir, newRel);
+      if(dirRel) await FS.mkdir(joinPath(newDir, dirRel), {recursive: true});
+      if(!reuse){
+        await FS.copyFile(src, dst); copied.push(dst);
+        if((await FS.stat(dst)).size !== size) throw new Error('The copy of “' + t.title + '” is not complete (the disk may be full).');
+      }
+      const oldPaths = [src];
+      const lsrc = fullPath(lrcRel(t.file));
+      if(await FS.exists(lsrc)){
+        const ldst = joinPath(newDir, lrcRel(newRel));
+        if(!await FS.exists(ldst)){ await FS.copyFile(lsrc, ldst); copied.push(ldst); }
+        oldPaths.push(lsrc);
+      }
+      plan.push({t, newRel, oldPaths});
+    }
+    if(cancel){ await cleanup(); close(); MUSIC.busy = false; toast('Cancelled. Nothing was changed.'); return; }
+    locked = true;
+    say('Switching to the new folder…', items.length);
+    const dir = await TAURI.core.invoke('save_music_dir', {path: newDir});
+    setMusicDir(dir);
+  }catch(e){
+    console.error(e);
+    await cleanup(); close(); MUSIC.busy = false;
+    toast('Couldn\'t move the songs: ' + ((e && e.message) || e) + ' Nothing was changed.', false, 9000);
+    return;
+  }
+  // from here on the new folder is the music folder
+  try{
+    for(const p of plan){
+      p.t.file = p.newRel; p.t.fileName = p.newRel.split('/').pop();
+      await dbPut('tracks', p.t);
+    }
+  }catch(e){ console.error(e); }
+  let left = 0;
+  for(let i = 0; i < plan.length; i++){
+    say('Moving old files to the Recycle Bin: ' + (i + 1) + ' of ' + plan.length, i);
+    for(const f of plan[i].oldPaths){
+      try{ if(await FS.exists(f)) await TAURI.core.invoke('move_to_trash', {path: f}); }
+      catch(e){ console.warn('old file left', f, e); left++; }
+    }
+  }
+  close();
+  MUSIC.busy = false;
+  await checkFolder();
+  S.queue = []; S.qi = -1; updateNowPlaying();
+  renderAll(); updateStorage();
+  await scanFolder(false);
+  toast('Moved ' + plural(plan.length, 'song') + ' to ' + MUSIC_DIR + (skipped ? ' · ' + skipped + ' not found in the old folder' : '') + (left ? ' · ' + plural(left, 'old file') + ' could not be removed (still in the old folder)' : ''), false, 9000);
 }
 
 /* ================= events ================= */
@@ -2337,6 +2583,14 @@ $('#btnAdd').addEventListener('click', () => { if(isPlView()) openPlaylistPicker
 $('#storageInfo').addEventListener('click', e => {
   if(e.target.closest('#btnOpenDir')) openMusicFolder();
   else if(e.target.closest('#btnRefresh')) scanFolder(true);
+  else if(e.target.closest('#btnFolderSet')) openFolderSettings();
+});
+$('#folderBar').addEventListener('click', e => {
+  const b = e.target.closest('button'); if(!b) return;
+  if(b.id === 'fbRetry') scanFolder(true);
+  else if(b.id === 'fbChoose') startChangeFolder();
+  else if(b.id === 'fbDef') switchToDefault();
+  else if(b.id === 'fbCreate') recreateFolder();
 });
 $('#btnTheme').addEventListener('click', () => openTheme());
 $('#btnBackup').addEventListener('click', openBackup);
@@ -2504,7 +2758,7 @@ async function updateStorage(){
   if(FOLDER){
     let total = 0; for(const t of S.tracks.values()) total += t.size || 0;
     const sz = total >= 1073741824 ? (total / 1073741824).toFixed(2) + ' GB' : Math.round(total / 1048576) + ' MB';
-    box.innerHTML = '<div>Music folder · ' + sz + '</div><div class="foot-actions"><button class="btn sm" id="btnOpenDir" title="Open the music folder in Explorer">' + icon('folder') + ' Open folder</button><button class="btn sm ico' + (scanning ? ' spin' : '') + '" id="btnRefresh" title="Refresh folder: rescan and add new songs" aria-label="Refresh folder"' + (scanning ? ' disabled' : '') + '>' + icon('refresh') + '</button></div>';
+    box.innerHTML = '<div>Music folder · ' + sz + '</div><div class="foot-actions"><button class="btn sm" id="btnOpenDir" title="Open the music folder in Explorer">' + icon('folder') + ' Open folder</button><button class="btn sm ico' + (scanning ? ' spin' : '') + '" id="btnRefresh" title="Refresh folder: rescan and add new songs" aria-label="Refresh folder"' + (scanning ? ' disabled' : '') + '>' + icon('refresh') + '</button><button class="btn sm ico" id="btnFolderSet" title="Music folder settings: choose another folder" aria-label="Music folder settings">' + icon('gear') + '</button></div>';
     return;
   }
   try{
@@ -2802,7 +3056,7 @@ async function remImport(path, name){
   name = name.replace(/[\\/:*?"<>|\x00-\x1f]/g, '_').trim().slice(0, 150);
   // only files the server itself saved in <app data>/incoming are ever read or deleted here
   const norm = x => String(x).replace(/\\/g, '/').toLowerCase();
-  const inc = norm(MUSIC_DIR.replace(/[\\/]Music$/, '')) + '/incoming/';
+  const inc = norm(APP_DIR) + '/incoming/';
   if(!norm(path).startsWith(inc) || norm(path).split('/').includes('..')){ console.warn('remote: refused path', path); return; }
   try{
     if(!AUDIO_RE.test(name)) throw new Error('not an audio file');
@@ -2873,15 +3127,22 @@ $('#btnRemote').addEventListener('click', openRemote);
     try{
       const base = await TAURI.path.appDataDir();
       SEP = TAURI.path.sep();
-      MUSIC_DIR = base.replace(/[\\/]+$/, '') + SEP + 'Music';
-      await FS.mkdir(MUSIC_DIR, {recursive: true});
+      APP_DIR = base.replace(/[\\/]+$/, '');
+      MUSIC.def = APP_DIR + SEP + 'Music'; MUSIC_DIR = MUSIC.def;
+      try{
+        const info = await TAURI.core.invoke('music_dir_info');   // the folder chosen in the app (or the default one)
+        if(info && info.dir){ MUSIC_DIR = info.dir; MUSIC.def = info.defaultDir || MUSIC.def; MUSIC.custom = !!info.isCustom; }
+      }catch(e){ console.warn('music_dir_info', e); }
+      if(MUSIC.custom){ try{ MUSIC.missing = !(await FS.exists(MUSIC_DIR)); }catch(e){ MUSIC.missing = true; } }
+      else await FS.mkdir(MUSIC_DIR, {recursive: true});
       audio.crossOrigin = 'anonymous';   // required for the speed and pitch effect on the asset URL
       FOLDER = true;
-      DATA_DIR = base.replace(/[\\/]+$/, '') + SEP + 'data';
+      DATA_DIR = APP_DIR + SEP + 'data';
       try{ await FS.mkdir(DATA_DIR + SEP + 'covers', {recursive: true}); }catch(e){ console.warn('data dir', e); }
       $('#btnBackup').classList.remove('hidden'); $('#btnLyrics').classList.remove('hidden'); $('#btnRemote').classList.remove('hidden');
     }catch(e){ console.error(e); toast('Couldn\'t create the music folder: ' + ((e && e.message) || e), false, 9000); }
   }
+  drawFolderBar();
   document.querySelectorAll('[data-icon]').forEach(n => { n.innerHTML = icon(n.dataset.icon, n.classList.contains('fillicon') ? 'fill' : ''); });
   S.sort = store.get('mp_sort', 'new'); $('#sortSel').value = S.sort;
   const v = store.get('mp_vol', 0.8); audio.volume = v; volEl.value = v;
@@ -2910,6 +3171,8 @@ $('#btnRemote').addEventListener('click', openRemote);
   let lib = null;
   if(FOLDER && !S.tracks.size && !S.playlists.length) lib = await loadLibraryFile();
   BK.hold = !!(lib && (lib.error || (lib.tracks && lib.tracks.length)));
+  // app data was wiped and the music folder is not there either: keep the backup untouched until the folder is back
+  if(lib && !lib.error && MUSIC.missing){ PENDING_LIB = lib; lib = null; }
   updateNowPlaying();
   renderAll(); updateStorage();
   if(FOLDER){
@@ -2922,7 +3185,7 @@ $('#btnRemote').addEventListener('click', openRemote);
         toast('Backup restored: ' + r.tracks + ' songs and ' + r.playlists + ' playlists', false, 6000);
       }catch(e){ console.error(e); toast('Backup restore failed'); }
     } else if(lib && lib.error) toast('The backup file was corrupted and ignored; the previous copy is kept next to it as library.prev.json', false, 8000);
-    BK.ready = true;
+    BK.ready = !PENDING_LIB;
     let has = true; try{ has = await FS.exists(libPath()); }catch(e){}
     if(BK.dirty || !has) scheduleBackup();
     if(REM.cfg.on) remStart().catch(e => { console.warn(e); REM.cfg.on = false; remSave(); toast('Phone remote could not start: ' + ((e && e.message) || e), false, 7000); });

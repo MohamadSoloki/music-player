@@ -2,7 +2,10 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::Manager;
+use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_fs::FsExt;
 
+mod musicdir;
 mod remote;
 
 /// Is `path` really inside the `base` folder? (resolves `..` and links)
@@ -12,17 +15,142 @@ fn is_inside(base: &Path, path: &Path) -> Result<bool, String> {
     Ok(real != base && real.starts_with(&base))
 }
 
+// ---------- music folder (see musicdir.rs) ----------
+/// The folder the songs live in right now (default: `<app data>/Music`, or the one chosen in the app).
+struct MusicDir {
+    cur: Mutex<PathBuf>,
+    /// the folder used before the last change: its files may still be moved to the Recycle Bin (after "Move my songs")
+    prev: Mutex<Option<PathBuf>>,
+}
+
+fn default_music_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    Ok(app.path().app_data_dir().map_err(|e| e.to_string())?.join("Music"))
+}
+
+fn current_music_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    Ok(app.state::<MusicDir>().cur.lock().unwrap().clone())
+}
+
+/// Lets the webview read/write the folder and show its files (the static scope only covers the default folder).
+fn allow_music_dir(app: &tauri::AppHandle, dir: &Path) -> Result<(), String> {
+    app.fs_scope().allow_directory(dir, true).map_err(|e| e.to_string())?;
+    app.asset_protocol_scope().allow_directory(dir, true).map_err(|e| e.to_string())
+}
+
+fn path_str(p: &Path) -> String {
+    musicdir::plain(p.to_path_buf()).to_string_lossy().into_owned()
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MusicDirInfo {
+    dir: String,
+    default_dir: String,
+    is_custom: bool,
+    exists: bool,
+}
+
+#[tauri::command]
+fn music_dir_info(app: tauri::AppHandle) -> Result<MusicDirInfo, String> {
+    let def = default_music_dir(&app)?;
+    let cur = current_music_dir(&app)?;
+    Ok(MusicDirInfo {
+        dir: path_str(&cur),
+        default_dir: path_str(&def),
+        is_custom: !musicdir::same_dir(&cur, &def),
+        exists: cur.is_dir(),
+    })
+}
+
+/// Opens the system "choose folder" window. None = the user cancelled.
+#[tauri::command]
+async fn pick_music_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut d = app.dialog().file().set_title("Choose your music folder");
+        if let Some(w) = app.get_webview_window("main") {
+            d = d.set_parent(&w);
+        }
+        match d.blocking_pick_folder() {
+            None => Ok(None),
+            Some(f) => f.into_path().map(|p| Some(path_str(&p))).map_err(|e| e.to_string()),
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FolderCheck {
+    path: String,
+    audio_files: usize,
+    same: bool,
+}
+
+/// Is this folder usable as the music folder? Also lets the webview use it (needed to look inside before switching).
+#[tauri::command]
+async fn check_music_dir(app: tauri::AppHandle, path: String) -> Result<FolderCheck, String> {
+    // (counting songs can take a moment on a big folder: keep it off the UI thread)
+    tauri::async_runtime::spawn_blocking(move || check_music_dir_sync(&app, &path))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+fn check_music_dir_sync(app: &tauri::AppHandle, path: &str) -> Result<FolderCheck, String> {
+    let appdata = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let def = default_music_dir(app)?;
+    let cur = current_music_dir(app)?;
+    let c = musicdir::validate(Path::new(path), &appdata, &def, &cur, &musicdir::system_dirs())?;
+    allow_music_dir(app, &c.path)?;
+    Ok(FolderCheck { path: path_str(&c.path), audio_files: c.audio_files, same: c.same })
+}
+
+/// Makes `path` the music folder (None = back to the default one) and remembers it for the next start.
+#[tauri::command]
+async fn save_music_dir(app: tauri::AppHandle, path: Option<String>) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || save_music_dir_sync(&app, path))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+fn save_music_dir_sync(app: &tauri::AppHandle, path: Option<String>) -> Result<String, String> {
+    let appdata = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let def = default_music_dir(app)?;
+    let state = app.state::<MusicDir>();
+    let mut slot = state.cur.lock().unwrap();
+    let (dir, custom) = match path {
+        Some(p) => {
+            let c = musicdir::validate(Path::new(&p), &appdata, &def, &slot, &musicdir::system_dirs())?;
+            let is_def = musicdir::same_dir(&c.path, &def);
+            (c.path, !is_def)
+        }
+        None => {
+            std::fs::create_dir_all(&def).map_err(|e| e.to_string())?;
+            (def.clone(), false)
+        }
+    };
+    allow_music_dir(app, &dir)?;
+    musicdir::write_setting(&appdata, if custom { Some(dir.as_path()) } else { None })?;
+    if !musicdir::same_dir(&slot, &dir) {
+        *state.prev.lock().unwrap() = Some(slot.clone());
+    }
+    *slot = dir.clone();
+    Ok(path_str(&dir))
+}
+
 /// Moves a file to the Windows Recycle Bin. Only files inside the music folder are allowed.
 #[tauri::command]
 async fn move_to_trash(app: tauri::AppHandle, path: String) -> Result<(), String> {
-    let music = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?
-        .join("Music");
+    let music = current_music_dir(&app)?;
+    let prev = app.state::<MusicDir>().prev.lock().unwrap().clone();
     tauri::async_runtime::spawn_blocking(move || {
         let p = PathBuf::from(&path);
-        if !is_inside(&music, &p)? {
+        let ok = is_inside(&music, &p)?
+            || match &prev {
+                Some(pv) => is_inside(pv, &p).unwrap_or(false),
+                None => false,
+            };
+        if !ok {
             return Err("path is outside the music folder".to_string());
         }
         trash::delete(&p).map_err(|e| e.to_string())
@@ -135,10 +263,29 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         // Open the music folder in Explorer
         .plugin(tauri_plugin_opener::init())
+        // Choose the music folder
+        .plugin(tauri_plugin_dialog::init())
         // Phone remote server state
         .manage(RemoteState::default())
+        .setup(|app| {
+            // Music folder: the one saved in settings.json, else the default one.
+            let handle = app.handle().clone();
+            let appdata = handle.path().app_data_dir()?;
+            let def = appdata.join("Music");
+            let dir = musicdir::read_setting(&appdata).unwrap_or_else(|| def.clone());
+            if !musicdir::same_dir(&dir, &def) {
+                // allowed even when the folder is missing right now (unplugged drive): it may come back
+                let _ = allow_music_dir(&handle, &dir);
+            }
+            app.manage(MusicDir { cur: Mutex::new(dir), prev: Mutex::new(None) });
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             move_to_trash,
+            music_dir_info,
+            pick_music_folder,
+            check_music_dir,
+            save_music_dir,
             remote_start,
             remote_stop,
             remote_poll,
