@@ -279,6 +279,30 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
   .right{justify-content:space-between}
   #fx,.pop{right:8px}
 }
+/* select mode, undo bar, stats */
+.selbar{display:flex;align-items:center;gap:8px;margin:10px 20px 0;padding:8px 12px;border-radius:12px;background:var(--accent-soft);border:1px solid var(--accent)}
+.selbar .grow{flex:1}
+.chk{display:none;width:20px;height:20px;border-radius:6px;border:2px solid var(--muted);margin:0 auto;place-items:center;color:transparent}
+.chk svg{width:13px;height:13px;stroke-width:3}
+.sel-mode .c-idx .num,.sel-mode .c-idx .eq{display:none!important}
+.sel-mode .c-idx .chk{display:grid}
+.sel-mode .row{user-select:none}
+.row.sel{background:var(--accent-soft)}
+.row.sel .chk{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff)}
+#btnSelect.on{border-color:var(--accent);color:var(--accent2)}
+#undoBar{position:fixed;bottom:104px;left:50%;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:14px;background:var(--panel2);border:1px solid var(--line);padding:10px 14px 13px 18px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.4);overflow:hidden;max-width:min(92vw,720px);line-height:1.6}
+#undoBar i{position:absolute;left:0;bottom:0;height:3px;width:100%;background:var(--accent2);transform-origin:left;animation:undoLine 10s linear forwards}
+@keyframes undoLine{to{transform:scaleX(0)}}
+.st-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px}
+.st-card{background:var(--panel2);border-radius:12px;padding:10px 12px}
+.st-card b{display:block;font-size:20px}.st-card span{color:var(--muted);font-size:12px}
+.st-h{margin:16px 0 6px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.st-row{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:8px;background:linear-gradient(to right,var(--accent-soft) var(--w),transparent var(--w));font-size:14px}
+.st-row[data-play]{cursor:pointer}.st-row[data-play]:hover{outline:1px solid var(--line)}
+.st-row .rk{width:18px;text-align:center;color:var(--muted);font-size:12px}
+.st-row .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.st-row small{color:var(--muted)}
+.st-row .n{color:var(--accent2);font-variant-numeric:tabular-nums;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -289,9 +313,11 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
       <button class="nav-item" data-view="all"><span data-icon="music"></span><span class="nm">All songs</span><span class="count" id="cAll">0</span></button>
       <button class="nav-item" data-view="fav"><span data-icon="heart"></span><span class="nm">Favorites</span><span class="count" id="cFav">0</span></button>
       <button class="nav-item" data-view="recent"><span data-icon="clock"></span><span class="nm">Recently played</span></button>
+      <button class="nav-item" data-view="top"><span data-icon="trend"></span><span class="nm">Most played</span></button>
       <div class="nav-head"><span>Playlists</span><button id="btnNewPl" title="New playlist" data-icon="plus"></button></div>
       <div id="plList"></div>
     </nav>
+    <button class="nav-item" id="btnStats"><span data-icon="trend"></span><span class="nm">Listening stats</span></button>
     <button class="nav-item hidden" id="btnBackup"><span data-icon="shield"></span><span class="nm">Backup</span></button>
     <button class="nav-item hidden" id="btnRemote"><span data-icon="phone"></span><span class="nm">Phone remote</span></button>
     <button class="nav-item" id="btnTheme"><span data-icon="palette"></span><span class="nm">Appearance</span></button>
@@ -317,12 +343,15 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
           <option value="plays">Most played</option>
         </select>
         <span id="plActions" class="top-actions"></span>
+        <button class="btn" id="btnSelect" title="Select several songs to delete them together"><span data-icon="check"></span> Select</button>
         <button class="btn" id="btnPlayAll"><span data-icon="play" class="fillicon"></span> Play all</button>
         <button class="btn primary" id="btnAdd"><span data-icon="plus"></span> Add songs</button>
         <input type="file" id="fileIn" accept="audio/*,.mp3,.m4a,.flac,.wav,.ogg,.oga,.opus,.aac,.webm" multiple hidden>
       </div>
     </header>
+    <div id="selBar" class="selbar hidden"><b id="selCnt">0 selected</b><span class="grow"></span><button class="btn sm" id="selAll">Select all</button><button class="btn sm hidden" id="selRm">Remove from playlist</button><button class="btn sm danger" id="selDel">Delete</button><button class="btn sm" id="selCancel">Cancel</button></div>
     <section id="list" class="list"></section>
+    <div id="undoBar" class="hidden"><span id="undoTxt"></span><button class="btn sm primary" id="undoBtn">Undo</button><i></i></div>
     <div class="drop-overlay" id="drop">Drop music files here</div>
     <section id="lyr" class="hidden" aria-label="Lyrics">
       <div class="lh">
@@ -428,6 +457,7 @@ const AUDIO_RE = /\.(mp3|m4a|flac|wav|ogg|oga|opus|aac|webm|wma)$/i;
 let FOLDER = false, MUSIC_DIR = '', APP_DIR = '', DATA_DIR = '', SEP = '\\';
 // music folder state: custom = not the default folder, missing = the folder can't be found right now, busy = songs are being moved
 const MUSIC = {custom: false, missing: false, busy: false, def: ''};
+const SEL = {on: false, ids: new Set(), last: null};   // select mode in the song list
 const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const fullPath = rel => MUSIC_DIR + SEP + rel.split('/').join(SEP);
@@ -470,6 +500,8 @@ const ICONS = {
   refresh:'<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
   lyrics:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="13" y2="12"/>',
   phone:'<rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>',
+  check:'<polyline points="20 6 9 17 4 12"/>',
+  trend:'<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>',
   gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
   folder:'<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
   palette:'<circle cx="13.5" cy="6.5" r="1"/><circle cx="17.5" cy="10.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/><circle cx="6.5" cy="12.5" r="1"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>'
@@ -934,9 +966,11 @@ function viewIds(){
   else { const p = getPl(v); ids = p ? p.trackIds.filter(id => S.tracks.has(id)) : []; }
   if(v === 'fav') ids = ids.filter(id => g(id).fav);
   else if(v === 'recent') ids = ids.filter(id => g(id).lastPlayed);
+  else if(v === 'top') ids = ids.filter(id => g(id).plays > 0);
   const q = S.q.trim().toLowerCase();
   if(q) ids = ids.filter(id => { const t = g(id); return (t.title + ' ' + t.artist + ' ' + t.album).toLowerCase().includes(q); });
   if(v === 'recent') ids = ids.sort((a, b) => g(b).lastPlayed - g(a).lastPlayed).slice(0, 100);
+  else if(v === 'top') ids = ids.sort((a, b) => (g(b).plays - g(a).plays) || ((g(b).lastPlayed || 0) - (g(a).lastPlayed || 0))).slice(0, 100);
   else if(v === 'all' || v === 'fav'){
     if(S.sort === 'title') ids.sort((a, b) => col.compare(g(a).title, g(b).title));
     else if(S.sort === 'artist') ids.sort((a, b) => col.compare(g(a).artist, g(b).artist));
@@ -982,7 +1016,7 @@ function coverHtml(t, cls){
   return coverUrlHtml(t.hasCover ? coverUrl(t.id) : null, (t.id * 57) % 360, cls, t.hasCover ? t.id : null);
 }
 
-const VIEW_TITLES = {all:'All songs', fav:'Favorites', recent:'Recently played'};
+const VIEW_TITLES = {all:'All songs', fav:'Favorites', recent:'Recently played', top:'Most played'};
 function renderSide(){
   remLibDirty();
   $('#cAll').textContent = S.tracks.size;
@@ -1001,6 +1035,8 @@ function renderHeader(ids){
   $('#viewSub').textContent = plural(ids.length, 'song') + (total ? ' · ' + fmt(total) : '');
   $('#sortSel').classList.toggle('hidden', !(S.view === 'all' || S.view === 'fav'));
   $('#btnPlayAll').classList.toggle('hidden', !ids.length);
+  syncSelBar();
+  $('#btnSelect').classList.toggle('hidden', !ids.length && !SEL.on);
   $('#plActions').innerHTML = !isPlView() ? '' :
     '<button class="btn" data-pa="rename">' + icon('edit') + ' Rename</button><button class="btn danger" data-pa="del">' + icon('trash') + ' Delete playlist</button>';
 }
@@ -1010,10 +1046,10 @@ const ROW_H = 56;
 const VIS = {ids:[], start:-1, end:-1, sortable:false};
 function rowHtml(id, i){
   const t = S.tracks.get(id), srt = VIS.sortable;
-  return '<div class="row' + (id === S.curId ? ' cur' + (S.playing ? ' playing' : '') : '') + (srt ? ' srt' : '') + '" data-id="' + id + '" data-i="' + i + '"' + (srt ? ' draggable="true"' : '') + '>' +
-    '<div class="c-idx"><span class="num">' + (i + 1) + '</span><span class="eq">' + icon('play', 'fill ic-play') + icon('pause', 'fill ic-pause') + '</span></div>' +
+  return '<div class="row' + (id === S.curId ? ' cur' + (S.playing ? ' playing' : '') : '') + (SEL.on && SEL.ids.has(id) ? ' sel' : '') + (srt ? ' srt' : '') + '" data-id="' + id + '" data-i="' + i + '"' + (srt ? ' draggable="true"' : '') + '>' +
+    '<div class="c-idx"><span class="chk">' + icon('check') + '</span><span class="num">' + (i + 1) + '</span><span class="eq">' + icon('play', 'fill ic-play') + icon('pause', 'fill ic-pause') + '</span></div>' +
     '<div>' + coverHtml(t) + '</div>' +
-    '<div class="c-main"><div class="t" dir="auto">' + esc(t.title) + (t.fav ? '<span class="favmark">' + icon('heart', 'fill') + '</span>' : '') + '</div><div class="a" dir="auto">' + esc(t.artist || 'Unknown artist') + '</div></div>' +
+    '<div class="c-main"><div class="t" dir="auto">' + esc(t.title) + (t.fav ? '<span class="favmark">' + icon('heart', 'fill') + '</span>' : '') + '</div><div class="a" dir="auto">' + esc(t.artist || 'Unknown artist') + (S.view === 'top' ? ' · ' + plural(t.plays || 0, 'play') : '') + '</div></div>' +
     '<div class="c-album" dir="auto">' + esc(t.album) + '</div>' +
     '<div class="c-dur"' + (t.plays ? ' title="' + t.plays + ' plays"' : '') + '>' + (t.duration ? fmt(t.duration) : '—') + '</div>' +
     '<div class="c-act">' +
@@ -1040,7 +1076,7 @@ function renderRows(force){
 function renderList(){
   const ids = viewIds();
   VIS.ids = ids; VIS.start = VIS.end = -1;
-  VIS.sortable = isPlView() && !S.q.trim();
+  VIS.sortable = isPlView() && !S.q.trim() && !SEL.on;
   renderHeader(ids);
   const L = $('#list'), st = L.scrollTop;
   if(!ids.length){
@@ -1049,6 +1085,7 @@ function renderList(){
     else if(S.view === 'all') msg = '<div class="big">' + icon('music') + '</div><div>Your library is empty.<br>Drag and drop music files here<br>or click “Add songs”.' + (FOLDER ? '<br>You can also copy files straight into the music folder and click “Refresh folder”.' : '') + '</div>';
     else if(S.view === 'fav') msg = '<div class="big">' + icon('heart') + '</div><div>No favorites yet.<br>Click the heart next to a song.</div>';
     else if(S.view === 'recent') msg = '<div class="big">' + icon('clock') + '</div><div>Nothing played yet.</div>';
+    else if(S.view === 'top') msg = '<div class="big">' + icon('trend') + '</div><div>No plays counted yet.<br>A play is counted when you listen to half of a song (or its first 10 seconds).</div>';
     else msg = '<div class="big">' + icon('list') + '</div><div>This playlist is empty.<br>Click “Add songs” to pick songs from your library.</div>';
     L.innerHTML = '<div class="empty">' + msg + '</div>';
     return;
@@ -1069,7 +1106,7 @@ function markCurrent(){
   }
 }
 function renderAll(){ renderSide(); renderList(); }
-function setView(v){ S.view = v; S.q = ''; $('#q').value = ''; renderAll(); $('#list').scrollTop = 0; }
+function setView(v){ SEL.on = false; SEL.ids.clear(); S.view = v; S.q = ''; $('#q').value = ''; renderAll(); $('#list').scrollTop = 0; }
 
 /* ================= playback control ================= */
 const curDur = () => isFinite(audio.duration) ? audio.duration : ((S.tracks.get(S.curId) || {}).duration || 0);
@@ -1543,6 +1580,7 @@ function openMenu(id, x, y){
   closeMenu();
   const t = S.tracks.get(id); if(!t) return;
   const items = [
+    ['select', 'Select songs', 'check'],
     ['playnext', 'Play next', 'next'], inQueue(id) ? ['queue', 'Remove from queue', 'x'] : ['queue', 'Add to queue', 'queue'],
     ['fav', t.fav ? 'Remove from favorites' : 'Add to favorites', 'heart'],
     ['addpl', 'Add to playlist', 'plus'], ['edit', 'Edit details', 'edit'], null,
@@ -1558,6 +1596,7 @@ function openMenu(id, x, y){
 }
 function rowAction(a, id){
   if(a === 'edit') openEdit(id);
+  else if(a === 'select') enterSelect(id);
   else if(a === 'addpl') openAddToPlaylist(id);
   else if(a === 'del') deleteTrack(id);
   else if(a === 'fav') toggleFav(id);
@@ -2272,7 +2311,8 @@ async function scanFolder(manual, force){
       else if(doRemove){ await removeTrackRecord(t.id); removed++; }
       else skippedGone++;
     }
-    const fresh = files.filter(r => !known.has(r));
+    const pend = pendingRels();   // songs deleted a moment ago (Undo still possible): their files are still there
+    const fresh = files.filter(r => !known.has(r) && !pend.has(r));
     for(let i = 0; i < fresh.length; i++){
       if(manual || fresh.length > 3){ toast('Adding ' + (i + 1) + ' of ' + fresh.length + '…', true); shown = true; }
       try{ if(await importDiskFile(fresh[i])) added++; else pending++; }
@@ -2392,6 +2432,7 @@ function openFolderSettings(){
 }
 async function startChangeFolder(){
   if(MUSIC.busy) return;
+  await commitPending();
   if(tagWriting){ toast('Wait until the tag is saved, then try again.'); return; }
   let picked;
   try{ picked = await TAURI.core.invoke('pick_music_folder'); }
@@ -2545,6 +2586,135 @@ async function moveLibraryTo(newDir){
   toast('Moved ' + plural(plan.length, 'song') + ' to ' + MUSIC_DIR + (skipped ? ' · ' + skipped + ' not found in the old folder' : '') + (left ? ' · ' + plural(left, 'old file') + ' could not be removed (still in the old folder)' : ''), false, 9000);
 }
 
+/* ---------- select several songs, delete them with Undo ---------- */
+const selIds = () => VIS.ids.filter(id => SEL.ids.has(id));
+function syncSelBar(){
+  $('#list').classList.toggle('sel-mode', SEL.on);
+  $('#selBar').classList.toggle('hidden', !SEL.on);
+  $('#btnSelect').classList.toggle('on', SEL.on);
+  if(!SEL.on) return;
+  const n = selIds().length;
+  $('#selCnt').textContent = n ? plural(n, 'song') + ' selected' : 'Click songs to select them';
+  $('#selDel').disabled = $('#selRm').disabled = !n;
+  $('#selRm').classList.toggle('hidden', !isPlView());
+  $('#selAll').textContent = n && n === VIS.ids.length ? 'Select none' : 'Select all';
+}
+function enterSelect(id){ SEL.on = true; SEL.ids.clear(); SEL.last = null; if(id != null){ SEL.ids.add(id); SEL.last = id; } renderList(); }
+function exitSelect(){ SEL.on = false; SEL.ids.clear(); SEL.last = null; renderList(); }
+function toggleSel(id, shift){
+  const on = !SEL.ids.has(id), put = x => { if(on) SEL.ids.add(x); else SEL.ids.delete(x); };
+  const a = shift && SEL.last != null ? VIS.ids.indexOf(SEL.last) : -1, b = VIS.ids.indexOf(id);
+  if(a >= 0 && b >= 0) for(let i = Math.min(a, b); i <= Math.max(a, b); i++) put(VIS.ids[i]);
+  else put(id);
+  SEL.last = id;
+  renderRows(true); syncSelBar();
+}
+$('#btnSelect').addEventListener('click', () => SEL.on ? exitSelect() : enterSelect());
+$('#selCancel').addEventListener('click', exitSelect);
+$('#selAll').addEventListener('click', () => {
+  if(selIds().length === VIS.ids.length) SEL.ids.clear(); else VIS.ids.forEach(id => SEL.ids.add(id));
+  renderRows(true); syncSelBar();
+});
+$('#selRm').addEventListener('click', async () => {
+  const p = isPlView() ? getPl(S.view) : null, ids = new Set(selIds()); if(!p || !ids.size) return;
+  p.trackIds = p.trackIds.filter(x => !ids.has(x));
+  await dbPut('playlists', p);
+  SEL.on = false; SEL.ids.clear(); renderAll();
+  toast(plural(ids.size, 'song') + ' removed from “' + p.name + '”');
+});
+$('#selDel').addEventListener('click', () => bulkDelete(selIds()));
+document.addEventListener('keydown', e => {
+  if(!SEL.on || document.querySelector('.modal-back')) return;
+  const tag = e.target.tagName, typing = tag === 'TEXTAREA' || tag === 'SELECT' || (tag === 'INPUT' && !['range', 'button', 'checkbox'].includes(e.target.type));
+  if(e.key === 'Escape' && !$('#ctx')) exitSelect();
+  else if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a' && !typing){ e.preventDefault(); VIS.ids.forEach(id => SEL.ids.add(id)); renderRows(true); syncSelBar(); }
+});
+
+// Deleting is delayed: the songs leave the library at once, but their files and records are only removed after
+// 10 seconds, so Undo is a simple "put them back". Closing the window (tray) does not cancel it; quitting commits it.
+const PEND = {items: null, timer: 0};
+const pendingRels = () => new Set((PEND.items || []).map(t => t.file).filter(Boolean));
+function hideUndo(){ $('#undoBar').classList.add('hidden'); }
+function showUndo(n){
+  $('#undoTxt').textContent = FOLDER ? plural(n, 'song') + ' deleted. Their files move to the Recycle Bin in 10 seconds.' : plural(n, 'song') + ' removed from the library.';
+  const bar = $('#undoBar'); bar.classList.remove('hidden');
+  const line = bar.querySelector('i'); line.style.animation = 'none'; void line.offsetWidth; line.style.animation = '';
+}
+async function bulkDelete(ids){
+  if(!ids.length) return;
+  if(MUSIC.busy){ toast('Songs are being moved. Try again when it is finished.'); return; }
+  await commitPending();                                  // an earlier delete is finished first
+  const items = ids.map(id => S.tracks.get(id)).filter(Boolean); if(!items.length) return;
+  const gone = new Set(items.map(t => t.id));
+  if(gone.has(S.curId)) await releaseAudio();             // Windows locks the file that is playing
+  for(const id of gone) S.tracks.delete(id);
+  S.queue = S.queue.filter(x => !gone.has(x)); S.qi = S.queue.indexOf(S.curId);
+  S.upNext = S.upNext.filter(x => !gone.has(x)); syncQueueBadge(); refreshQueueModal();
+  PEND.items = items;
+  SEL.on = false; SEL.ids.clear();
+  renderAll(); updateStorage(); updateNowPlaying();
+  showUndo(items.length);
+  clearTimeout(PEND.timer); PEND.timer = setTimeout(commitPending, 10000);
+}
+function undoDelete(){
+  const items = PEND.items; if(!items) return;
+  clearTimeout(PEND.timer); PEND.items = null; hideUndo();
+  for(const t of items) S.tracks.set(t.id, t);
+  renderAll(); updateStorage(); scheduleBackup();   // a backup written while they were hidden does not list them
+  toast(plural(items.length, 'song') + ' restored');
+}
+$('#undoBtn').addEventListener('click', undoDelete);
+async function commitPending(){
+  const items = PEND.items; if(!items) return;
+  PEND.items = null; clearTimeout(PEND.timer); hideUndo();
+  let fail = 0;
+  for(const t of items){
+    try{
+      if(FOLDER && t.file){
+        const main = fullPath(t.file), lrc = fullPath(lrcRel(t.file));
+        if(await FS.exists(main)) await TAURI.core.invoke('move_to_trash', {path: main});
+        try{ if(await FS.exists(lrc)) await TAURI.core.invoke('move_to_trash', {path: lrc}); }catch(e){ console.warn(e); }
+      }
+      await removeTrackRecord(t.id);
+    }catch(e){ console.error(e); fail++; S.tracks.set(t.id, t); }   // could not be moved (maybe open in another app): the song stays
+  }
+  renderAll(); updateStorage();
+  if(fail) toast(plural(fail, 'song') + ' could not be moved to the Recycle Bin (it may be open in another app), so it stayed in the library.', false, 8000);
+}
+
+/* ---------- listening stats ---------- */
+const fmtHours = sec => { const h = Math.floor(sec / 3600), m = Math.round(sec % 3600 / 60); return h ? h + ' h ' + m + ' min' : m + ' min'; };
+function topBy(list, field, n){
+  const map = new Map();
+  for(const t of list){
+    const raw = String(t[field] || '').trim().replace(/\s+/g, ' '); if(!raw) continue;
+    const k = raw.toLowerCase(); let e = map.get(k); if(!e){ e = {n: 0, names: new Map()}; map.set(k, e); }
+    e.n += t.plays; e.names.set(raw, (e.names.get(raw) || 0) + t.plays);
+  }
+  return [...map.values()].map(e => ({name: [...e.names].sort((a, b) => b[1] - a[1])[0][0], n: e.n})).sort((a, b) => b.n - a.n).slice(0, n);
+}
+function openStats(){
+  const played = [...S.tracks.values()].filter(t => t.plays > 0);
+  const plays = played.reduce((s, t) => s + t.plays, 0), secs = played.reduce((s, t) => s + t.plays * (t.duration || 0), 0);
+  const top = played.slice().sort((a, b) => (b.plays - a.plays) || ((b.lastPlayed || 0) - (a.lastPlayed || 0))).slice(0, 10);
+  const sec = (title, rows, play) => {
+    if(!rows.length) return '';
+    const max = rows[0].n;
+    return '<div class="st-h">' + title + '</div>' + rows.map((r, i) => '<div class="st-row" style="--w:' + Math.round(r.n / max * 100) + '%"' + (play ? ' data-play="' + r.id + '"' : '') + '><span class="rk">' + (i + 1) + '</span><span class="nm" dir="auto">' + esc(r.name) + (r.sub ? ' <small>' + esc(r.sub) + '</small>' : '') + '</span><span class="n">' + plural(r.n, 'play') + '</span></div>').join('');
+  };
+  openModal('<h3>Listening stats</h3>' + (played.length
+    ? '<div class="st-cards"><div class="st-card"><b>' + plays + '</b><span>plays</span></div><div class="st-card"><b>' + played.length + '</b><span>of ' + S.tracks.size + ' songs played</span></div><div class="st-card"><b>' + (secs ? fmtHours(secs) : '—') + '</b><span>listening time (about)</span></div></div>' +
+      sec('Top songs', top.map(t => ({id: t.id, name: t.title, sub: t.artist, n: t.plays})), true) +
+      sec('Top artists', topBy(played, 'artist', 10), false) + sec('Top albums', topBy(played, 'album', 5), false) +
+      '<div class="muted small" style="margin-top:12px">A play is counted when you listen to half of a song (or its first 10 seconds). The same list is in “Most played” in the sidebar.</div>'
+    : '<div class="empty muted" style="padding:20px 0">Nothing played yet. Play some songs and your stats will appear here.</div>') +
+    '<div class="actions"><button class="btn primary" data-close>Close</button></div>',
+    (m, close) => {
+      m.addEventListener('click', e => { const r = e.target.closest('[data-play]'); if(r){ close(); playList(top.map(t => t.id), +r.dataset.play); } });
+    });
+}
+$('#btnStats').addEventListener('click', openStats);
+
 /* ================= events ================= */
 document.addEventListener('click', e => {
   const nav = e.target.closest('#side .nav-item[data-view]');
@@ -2575,6 +2745,7 @@ $('#list').addEventListener('click', e => {
     else rowAction(a, id);
     return;
   }
+  if(SEL.on){ toggleSel(id, e.shiftKey); return; }
   if(id === S.curId && S.queue.length){ togglePlay(); return; }
   playList(viewIds(), id);
 });
@@ -3225,7 +3396,7 @@ async function restoreResume(){
 }
 /* ---------- tray icon (Windows app): the window's close button only hides it, the tray menu controls playback ---------- */
 async function trayQuit(){
-  try{ saveResume(); if(BK.ready && BK.dirty) await saveBackup(); }catch(e){ console.warn(e); }
+  try{ await commitPending(); saveResume(); if(BK.ready && BK.dirty) await saveBackup(); }catch(e){ console.warn(e); }
   try{ await TAURI.core.invoke('quit_app'); }catch(e){ console.warn(e); }
 }
 if(IS_APP && TAURI.event && TAURI.event.listen){
