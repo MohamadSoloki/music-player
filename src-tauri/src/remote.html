@@ -199,6 +199,7 @@ body:not(.playing) .eq i{animation-play-state:paused}
       <label class="lnk"><input type="checkbox" id="fxL"><span><b>Change pitch together with speed</b><br><small>Faster = higher voice (nightcore), slower = deeper voice.</small></span></label>
       <div class="chips" style="margin-top:12px"><button class="chip" data-fpre="original">Original</button><button class="chip" data-fpre="slowed">Slowed</button><button class="chip" data-fpre="nightcore">Nightcore</button></div>
     </div>
+    <div class="fxp hidden" id="notifRow"><label class="lnk" style="margin-top:0"><input type="checkbox" id="notifOn"><span><b>Show in phone notifications</b><br><small>Control the music from the notification bar and the lock screen (play, pause, next, previous, seek). It plays a silent sound in the background, so it may pause other music or videos on this phone.</small></span></label></div>
     </div>
     </div>
     <h3>Up next <small id="upCnt"></small></h3>
@@ -340,6 +341,7 @@ function paint(){
   document.title = s.playing && s.title ? s.title : 'Music remote';
   $('#td').textContent = fmt(s.d);
   tick();
+  syncSession();
   paintQueue();
   markCurrent();
 }
@@ -391,10 +393,12 @@ function setCover(cv){
     box.innerHTML = ''; box.appendChild(img); coverUrl = img.src;
     const th = $('#miniTh'); th.innerHTML = ''; const i2 = new Image(); i2.alt = ''; i2.src = coverUrl; th.appendChild(i2);
     $('#bg').style.backgroundImage = 'url("' + coverUrl + '")'; $('#bg').classList.add('img');
+    syncSession();
   };
   img.onerror = () => {
     coverUrl = ''; box.innerHTML = ICON_NOTE; $('#miniTh').innerHTML = ICON_NOTE;
     $('#bg').style.backgroundImage = ''; $('#bg').classList.remove('img');
+    syncSession();
   };
   img.alt = ''; img.src = BASE + 'api/cover?c=' + cv;
 }
@@ -573,6 +577,56 @@ async function poll(){
       await new Promise(r => setTimeout(r, Math.min(5000, 800 * fails)));
     }
   }
+}
+/* ---- notification bar / lock screen controls (Media Session) ----
+   Phones show the media notification only for a page that is playing sound, so while this is on the page plays a
+   10-second silent loop. It is opt-in because it takes the phone's audio focus (other music may pause). */
+const MS = 'mediaSession' in navigator && window.MediaMetadata ? navigator.mediaSession : null;
+let msOn = false, msAudio = null, msKey = '';
+function silentWav(){
+  const n = 80000, b = new Uint8Array(44 + n), dv = new DataView(b.buffer), w = (o, t) => { for(let i = 0; i < t.length; i++) b[o + i] = t.charCodeAt(i); };
+  w(0, 'RIFF'); dv.setUint32(4, 36 + n, true); w(8, 'WAVE'); w(12, 'fmt '); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
+  dv.setUint32(24, 8000, true); dv.setUint32(28, 8000, true); dv.setUint16(32, 1, true); dv.setUint16(34, 8, true); w(36, 'data'); dv.setUint32(40, n, true); b.fill(128, 44);
+  return URL.createObjectURL(new Blob([b], {type: 'audio/wav'}));
+}
+function msHandlers(on){
+  const set = (a, f) => { try{ MS.setActionHandler(a, on ? f : null); }catch(e){} };
+  set('play', () => cmd({op: 'play'})); set('pause', () => cmd({op: 'pause'}));
+  set('previoustrack', () => cmd({op: 'prev'})); set('nexttrack', () => cmd({op: 'next'}));
+  set('seekbackward', d => cmd({op: 'skip', d: -((d && d.seekOffset) || 10)}));
+  set('seekforward', d => cmd({op: 'skip', d: (d && d.seekOffset) || 10}));
+  set('seekto', d => { if(d && d.seekTime != null) cmd({op: 'seek', t: d.seekTime}); });
+}
+function syncSession(){
+  if(!MS || !msOn) return;
+  const title = S.title || (byId.get(S.id) || {}).t || '';
+  const key = [S.id, title, S.artist, S.album, coverUrl].join('|');
+  if(key !== msKey){
+    msKey = key;
+    try{ MS.metadata = S.id == null ? null : new MediaMetadata({title, artist: S.artist || '', album: S.album || '', artwork: coverUrl ? [{src: new URL(coverUrl, location.href).href, sizes: '512x512'}] : []}); }catch(e){}
+  }
+  try{ MS.playbackState = S.id == null ? 'none' : S.playing ? 'playing' : 'paused'; }catch(e){}
+  if(S.d > 0){ try{ MS.setPositionState({duration: S.d, playbackRate: (S.fx && S.fx.s) || 1, position: Math.max(0, Math.min(S.d, pos()))}); }catch(e){} }
+}
+async function msEnable(on){
+  msOn = on; $('#notifOn').checked = on;
+  try{ localStorage.setItem('mr_notif', on ? '1' : '0'); }catch(e){}
+  if(!MS) return;
+  msHandlers(on);
+  if(on){
+    if(!msAudio){ msAudio = new Audio(silentWav()); msAudio.loop = true; msAudio.setAttribute('playsinline', ''); }
+    try{ await msAudio.play(); }catch(e){}   // without a tap the browser refuses; the next tap retries
+    msKey = ''; syncSession();
+  } else {
+    if(msAudio) msAudio.pause();
+    try{ MS.metadata = null; MS.playbackState = 'none'; }catch(e){}
+  }
+}
+if(MS){
+  $('#notifRow').classList.remove('hidden');
+  $('#notifOn').onchange = () => msEnable($('#notifOn').checked);
+  document.addEventListener('pointerdown', () => { if(msOn && msAudio && msAudio.paused) msAudio.play().catch(() => {}); }, {passive: true});
+  try{ if(localStorage.getItem('mr_notif') === '1') msEnable(true); }catch(e){}
 }
 // the phone may pause timers in the background: refresh as soon as the page is visible again
 document.addEventListener('visibilitychange', () => { if(!document.hidden && curAc){ kicked = true; curAc.abort(); } });
