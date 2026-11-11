@@ -81,6 +81,16 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border:0;border-radiu
 .nothing .ctrls .ib:not(.play),.nothing .tools .ib,.nothing .seek{opacity:.45}
 h3{margin:20px 0 8px;font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:8px}
 h3 small{font-weight:500;text-transform:none;letter-spacing:0}
+/* speed and pitch */
+.fxtog{display:flex;align-items:center;gap:10px;width:100%;margin-top:12px;padding:12px 14px;border-radius:14px;background:color-mix(in srgb,var(--panel) 92%,transparent);border:1px solid var(--line);text-align:start}
+.fxtog span{flex:1}.fxtog b{font-size:12px;color:var(--muted);font-weight:600}.fxtog i{font-style:normal;color:var(--muted);transition:transform .15s}
+.fxtog.open i{transform:rotate(90deg)}.fxtog.on b{color:var(--accent2)}
+.fxp{margin-top:8px;padding:12px 14px;border-radius:14px;background:color-mix(in srgb,var(--panel) 92%,transparent);border:1px solid var(--line)}
+.fxr{margin-bottom:6px}.fxr input{width:100%}
+.lab{display:flex;justify-content:space-between;color:var(--muted);font-size:13px}.lab output{color:var(--text);font-variant-numeric:tabular-nums}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.lnk{display:flex;gap:12px;align-items:flex-start;margin-top:10px;font-size:14px}.lnk input{margin-top:4px;width:20px;height:20px;accent-color:var(--accent);flex:none}.lnk small{color:var(--muted);font-size:12px}
 /* lists */
 .search{display:flex;gap:8px;position:sticky;top:0;background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:4px 0 8px;z-index:2}
 .sbox{position:relative;flex:1;min-width:0;display:flex}
@@ -177,6 +187,17 @@ body:not(.playing) .eq i{animation-play-state:paused}
     <div class="row2">
       <button class="ib dim" id="bMute" aria-label="Mute"></button>
       <input type="range" id="vol" min="0" max="100" value="80" aria-label="Volume"><output id="volN">80</output>
+    </div>
+    <button class="fxtog" id="fxToggle" aria-expanded="false" aria-controls="fxPanel"><svg viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg><span>Speed and pitch</span><b id="fxSum">Original</b><i aria-hidden="true">›</i></button>
+    <div class="fxp hidden" id="fxPanel">
+      <div class="fxr"><div class="lab"><span>Speed</span><output id="fxSV">1.00×</output></div>
+        <input type="range" id="fxS" min="0.5" max="2" step="0.05" value="1" aria-label="Playback speed">
+        <div class="chips"><button class="chip" data-fs="0.75">0.75×</button><button class="chip" data-fs="1">1×</button><button class="chip" data-fs="1.25">1.25×</button><button class="chip" data-fs="1.5">1.5×</button></div></div>
+      <div class="fxr"><div class="lab"><span>Pitch</span><output id="fxPV">0</output></div>
+        <input type="range" id="fxP" min="-12" max="12" step="0.5" value="0" aria-label="Pitch in semitones">
+        <div class="chips"><button class="chip" data-fp="-2">−2</button><button class="chip" data-fp="-1">−1</button><button class="chip" data-fp="0">0</button><button class="chip" data-fp="1">+1</button><button class="chip" data-fp="2">+2</button></div></div>
+      <label class="lnk"><input type="checkbox" id="fxL"><span><b>Change pitch together with speed</b><br><small>Faster = higher voice (nightcore), slower = deeper voice.</small></span></label>
+      <div class="chips" style="margin-top:12px"><button class="chip" data-fpre="original">Original</button><button class="chip" data-fpre="slowed">Slowed</button><button class="chip" data-fpre="nightcore">Nightcore</button></div>
     </div>
     </div>
     </div>
@@ -313,16 +334,47 @@ function paint(){
   $('#bFav').classList.toggle('on', !!s.fav); $('#bFav').classList.toggle('dim', !s.fav);
   $('#bFav svg').classList.toggle('f', !!s.fav);
   $('#bMute').innerHTML = s.muted || s.vol === 0 ? ICON_MUTE : ICON_VOL;
-  if(document.activeElement !== $('#vol')) setRange($('#vol'), Math.round((s.vol == null ? 0.8 : s.vol) * 100));
+  if(document.activeElement !== $('#vol') && Date.now() - volAt > 1200) setRange($('#vol'), Math.round((s.vol == null ? 0.8 : s.vol) * 100));
   $('#volN').textContent = $('#vol').value;
+  paintFx();
   document.title = s.playing && s.title ? s.title : 'Music remote';
   $('#td').textContent = fmt(s.d);
   tick();
   paintQueue();
   markCurrent();
 }
+const fmtSt = x => (x > 0 ? '+' : '') + (Math.round(x * 10) / 10);
+function paintFx(){
+  const f = S.fx || {s: 1, p: 0, l: false};
+  const changed = Math.abs(f.s - 1) > 0.001 || Math.abs(f.p) > 0.01;
+  const eff = (f.l ? 12 * Math.log2(f.s) : 0) + f.p;
+  $('#fxSum').textContent = changed ? f.s.toFixed(2) + '× · ' + fmtSt(eff) : 'Original';
+  $('#fxToggle').classList.toggle('on', changed);
+  if(document.activeElement !== $('#fxS')) setRange($('#fxS'), f.s);
+  if(document.activeElement !== $('#fxP')) setRange($('#fxP'), f.p);
+  $('#fxSV').textContent = (+$('#fxS').value).toFixed(2) + '×'; $('#fxPV').textContent = fmtSt(+$('#fxP').value) + ' semitones';
+  $('#fxL').checked = !!f.l;
+  document.querySelectorAll('[data-fs]').forEach(b => b.classList.toggle('on', Math.abs(+b.dataset.fs - f.s) < 0.001));
+  document.querySelectorAll('[data-fp]').forEach(b => b.classList.toggle('on', Math.abs(+b.dataset.fp - f.p) < 0.001));
+  document.querySelectorAll('[data-fpre]').forEach(b => b.classList.toggle('on',
+    (b.dataset.fpre === 'original' && !changed && !f.l) || (b.dataset.fpre === 'slowed' && f.s === 0.85 && f.p === 0 && f.l) || (b.dataset.fpre === 'nightcore' && f.s === 1.25 && f.p === 0 && f.l)));
+}
+function sendFx(o){ S.fx = Object.assign({s: 1, p: 0, l: false}, S.fx); at = Date.now(); S.t = pos(); cmd(Object.assign({op: 'fx'}, o)); }
+let fxT = 0;
+$('#fxToggle').onclick = () => { const open = $('#fxPanel').classList.toggle('hidden') === false; $('#fxToggle').classList.toggle('open', open); $('#fxToggle').setAttribute('aria-expanded', open); try{ sessionStorage.setItem('mr_fx', open ? '1' : ''); }catch(e){} };
+$('#fxS').addEventListener('input', () => { const v = +$('#fxS').value; setRange($('#fxS'), v); $('#fxSV').textContent = v.toFixed(2) + '×'; clearTimeout(fxT); fxT = setTimeout(() => { sendFx({s: v}); S.fx.s = v; }, 80); });
+$('#fxP').addEventListener('input', () => { const v = +$('#fxP').value; setRange($('#fxP'), v); $('#fxPV').textContent = fmtSt(v) + ' semitones'; clearTimeout(fxT); fxT = setTimeout(() => { sendFx({p: v}); S.fx.p = v; }, 80); });
+$('#fxL').addEventListener('change', () => { const l = $('#fxL').checked; sendFx({l}); S.fx.l = l; paintFx(); });
+$('#fxPanel').addEventListener('click', e => {
+  const b = e.target.closest('button'); if(!b) return;
+  if(b.dataset.fs){ sendFx({s: +b.dataset.fs}); S.fx.s = +b.dataset.fs; }
+  else if(b.dataset.fp){ sendFx({p: +b.dataset.fp}); S.fx.p = +b.dataset.fp; }
+  else if(b.dataset.fpre){ const k = b.dataset.fpre; sendFx({preset: k}); S.fx = k === 'original' ? {s: 1, p: 0, l: false} : k === 'slowed' ? {s: 0.85, p: 0, l: true} : {s: 1.25, p: 0, l: true}; }
+  paintFx();
+});
+try{ if(sessionStorage.getItem('mr_fx')){ $('#fxPanel').classList.remove('hidden'); $('#fxToggle').classList.add('open'); $('#fxToggle').setAttribute('aria-expanded', 'true'); } }catch(e){}
 function setRange(el, v){ el.value = v; el.style.setProperty('--p', (v - el.min) / (el.max - el.min) * 100 + '%'); }
-function pos(){ return S.playing ? Math.min(S.d || 1e9, (S.t || 0) + (Date.now() - at) / 1000) : (S.t || 0); }
+function pos(){ return S.playing ? Math.min(S.d || 1e9, (S.t || 0) + (Date.now() - at) / 1000 * ((S.fx && S.fx.s) || 1)) : (S.t || 0); }
 function tick(){
   if(seeking) return;
   const p = pos();
@@ -386,8 +438,8 @@ $('#seek').addEventListener('input', () => { seeking = true; setRange($('#seek')
 $('#seek').addEventListener('change', () => {
   const t = $('#seek').value / 1000 * (S.d || 0); S.t = t; at = Date.now(); seeking = false; cmd({op: 'seek', t});
 });
-let volT = 0;
-$('#vol').addEventListener('input', () => { setRange($('#vol'), $('#vol').value); $('#volN').textContent = $('#vol').value; clearTimeout(volT); volT = setTimeout(() => cmd({op: 'vol', v: $('#vol').value / 100}), 60); });
+let volT = 0, volAt = 0;
+$('#vol').addEventListener('input', () => { setRange($('#vol'), $('#vol').value); $('#volN').textContent = $('#vol').value; volAt = Date.now(); const v = $('#vol').value / 100; clearTimeout(volT); volT = setTimeout(() => cmd({op: 'vol', v}), 60); });
 
 /* ---- library ---- */
 function songRow(t, extra){

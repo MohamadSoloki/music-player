@@ -1361,7 +1361,7 @@ function syncFxUI(){
   $('#fxLabel').textContent = changed ? speed.toFixed(2) + '× · ' + fmtSt(eff) : 'Speed and pitch';
   $('#btnFx').classList.toggle('on', changed);
 }
-function fxChanged(){ applyFx(); syncFxUI(); store.set('mp_fx', S.fx); }
+function fxChanged(){ applyFx(); syncFxUI(); store.set('mp_fx', S.fx); remPush(); }
 $('#fxSpeed').addEventListener('input', e => { S.fx.speed = +e.target.value; fxChanged(); });
 $('#fxPitch').addEventListener('input', e => { S.fx.pitch = +e.target.value; fxChanged(); });
 $('#fxLink').addEventListener('change', e => { S.fx.link = e.target.checked; fxChanged(); });
@@ -2937,7 +2937,8 @@ function remState(){
     id: t ? t.id : null, title: t ? t.title : '', artist: t ? t.artist : '', album: t ? t.album : '',
     playing: !!S.playing, t: +(audio.currentTime || 0).toFixed(1), d: +(d || 0).toFixed(1),
     vol: +audio.volume.toFixed(2), muted: !!audio.muted, shuffle: !!S.shuffle, repeat: S.repeat, fav: !!(t && t.fav),
-    up: S.upNext.slice(0, 100)
+    up: S.upNext.slice(0, 100),
+    fx: {s: S.fx.speed, p: S.fx.pitch, l: !!S.fx.link}
   });
 }
 // coalesced: many events in a row become one message
@@ -3046,6 +3047,20 @@ async function remExec(c){
     case 'playPl': { const ids = remIds({src: 'pl', pl: c.pl}); if(ids.length) playList(ids); break; }
     case 'queue': { const id = +c.id; if(S.tracks.has(id)) enqueue(id, !!c.next); break; }
     case 'dequeue': { const id = +c.id; if(inQueue(id)) dequeue(id); break; }
+    case 'fx': {
+      // speed and pitch from the phone: same values and presets as the panel on the computer
+      const f = S.fx;
+      if(c.preset === 'original') S.fx = {speed: 1, pitch: 0, link: false};
+      else if(c.preset === 'slowed') S.fx = {speed: 0.85, pitch: 0, link: true};
+      else if(c.preset === 'nightcore') S.fx = {speed: 1.25, pitch: 0, link: true};
+      else {
+        const sp = c.s === undefined ? null : remNum(c.s, 0.5, 2), pt = c.p === undefined ? null : remNum(c.p, -12, 12);
+        if(sp != null) f.speed = Math.round(sp * 20) / 20;
+        if(pt != null) f.pitch = Math.round(pt * 2) / 2;
+        if(typeof c.l === 'boolean') f.link = c.l;
+      }
+      fxChanged(); break;
+    }
     case 'upload': await remImport(String(c.path || ''), String(c.name || '')); break;
   }
   remPush();
