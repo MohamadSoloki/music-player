@@ -52,6 +52,7 @@ The Linux sandbox that agents usually run in cannot compile the Tauri app (no GT
 - **Most played and stats.** `t.plays` / `t.lastPlayed` are counted in the player (half of a song or its first 10 seconds). The sidebar view `top` ("Most played", top 100) and the "Listening stats" dialog (`openStats`, `topBy` merges artist spellings case-insensitively) read them.
 - **Lyrics** come from a `.lrc` file with the same base name next to the song (`parseLrc`, `lyrLoad`). Encodings: UTF-8/UTF-16/windows-1256.
 - **Theme** is stored in `localStorage` key `mp_theme` and applied as CSS variables on `:root`.
+- **Look (rounded, soft glow, floating player).** The last CSS block in `index.html` ("look: rounder shapes…") overrides earlier rules; all colors still come from the theme variables, so presets and custom colors keep working. Keep `.row` height equal to `ROW_H` (56) and give rows no vertical margin: the virtual list computes positions from `ROW_H`. The seek and volume sliders are drawn by CSS from the custom property `--p`, which `fillRange(el)` sets (on input, on `timeupdate`, and when the value is set from code); call it after any code that sets `#seek` or `#vol` `.value`.
 - Playback state keys in `localStorage` start with `mp_` and are listed in `BK_KEYS` when they must survive in the backup.
 - Beware of name clashes: everything is one global script. Before adding a top-level function or constant, grep that the name is not already used (a duplicate function name silently overrides the earlier one).
 
