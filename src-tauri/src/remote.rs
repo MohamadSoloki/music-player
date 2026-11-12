@@ -11,17 +11,19 @@
 //! * webview -> server: `push_state`, `push_library`, `push_cover`, `push_notice`
 //! * phone  -> server -> webview: commands are queued; the webview takes them with `poll`
 //! * phone  -> server: an uploaded file is saved in `incoming/`, then the webview is told to import it
+//! * server -> phone: `GET /api/audio?id=` streams a song (with Range support) so the phone can play it itself
+//!   (PROTOTYPE "play on this phone": the blocks marked PROTOTYPE can be removed together)
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::fs;
-use std::io::{BufWriter, Read, Write};
-use std::path::PathBuf;
+use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use tiny_http::{Header, Method, Request, Response, Server};
+use tiny_http::{Header, Method, Request, Response, Server, StatusCode};
 
 const PAGE: &str = include_str!("remote.html");
 /// Largest song accepted from the phone (upload or link).
@@ -64,6 +66,13 @@ struct Shared {
     file_seq: AtomicU64,
     inner: Mutex<Inner>,
     cv: Condvar,
+    audio: Mutex<Audio>,
+}
+
+/// PROTOTYPE (play on this phone): where the songs are and which file belongs to which song id.
+struct Audio {
+    root: Option<Arc<dyn Fn() -> PathBuf + Send + Sync>>,
+    files: HashMap<u64, String>,
 }
 
 pub struct Remote {
@@ -117,6 +126,7 @@ impl Remote {
                 cmds: VecDeque::new(),
             }),
             cv: Condvar::new(),
+            audio: Mutex::new(Audio { root: None, files: HashMap::new() }),
         });
         let sh = shared.clone();
         thread::spawn(move || {
@@ -207,6 +217,27 @@ impl Remote {
         g.cover_ver += 1;
         g.ver += 1;
         self.shared.cv.notify_all();
+    }
+
+    /// PROTOTYPE (play on this phone): tells the server where the music folder is. It is asked at every request,
+    /// so a folder change made in the app is followed at once.
+    pub fn set_audio_root(&self, f: Arc<dyn Fn() -> PathBuf + Send + Sync>) {
+        self.shared.audio.lock().unwrap().root = Some(f);
+    }
+
+    /// PROTOTYPE: `{"<song id>": "<path relative to the music folder>"}`. The phone only ever sends an id.
+    pub fn push_files(&self, json: String) -> Result<(), String> {
+        check_json(&json)?;
+        let v: serde_json::Value = serde_json::from_str(&json).map_err(|e| e.to_string())?;
+        let obj = v.as_object().ok_or("not an object")?;
+        let mut m = HashMap::with_capacity(obj.len());
+        for (k, val) in obj {
+            if let (Ok(id), Some(rel)) = (k.parse::<u64>(), val.as_str()) {
+                m.insert(id, rel.to_string());
+            }
+        }
+        self.shared.audio.lock().unwrap().files = m;
+        Ok(())
     }
 
     /// A short message the phone shows (for example the result of an upload).
@@ -397,6 +428,20 @@ fn handle(sh: &Arc<Shared>, req: Request) {
                 && queue_cmd(sh, String::from_utf8_lossy(&buf).into_owned());
             send_json(req, if ok { 200 } else { 400 }, format!("{{\"ok\":{}}}", ok));
         }
+        (Method::Get, "/api/audio") => {
+            let id = query_param(query, "id").and_then(|v| v.parse::<u64>().ok());
+            let path = id.and_then(|id| {
+                let (root, rel) = {
+                    let a = sh.audio.lock().unwrap();
+                    (a.root.clone(), a.files.get(&id).cloned())
+                };
+                resolve_audio(&root?(), &rel?)
+            });
+            match path {
+                Some(p) => serve_audio(req, &p),
+                None => send_empty(req, 404),
+            }
+        }
         (Method::Post, "/api/upload") => upload(sh, req),
         (Method::Post, "/api/fetch") => {
             let mut req = req;
@@ -417,6 +462,97 @@ fn handle(sh: &Arc<Shared>, req: Request) {
         _ => send_empty(req, 404),
     }
 }
+
+// ---- PROTOTYPE: play on this phone ----
+
+/// The real file for a song, only when it is an audio file inside the music folder (never a path the phone chose).
+fn resolve_audio(root: &Path, rel: &str) -> Option<PathBuf> {
+    if !has_audio_ext(rel) {
+        return None;
+    }
+    let root = root.canonicalize().ok()?;
+    let p = root.join(rel).canonicalize().ok()?;
+    if p != root && p.starts_with(&root) && p.is_file() {
+        Some(p)
+    } else {
+        None
+    }
+}
+
+fn audio_ctype(p: &Path) -> &'static str {
+    match p.extension().and_then(|e| e.to_str()).map(|e| e.to_ascii_lowercase()).as_deref() {
+        Some("mp3") => "audio/mpeg",
+        Some("m4a") => "audio/mp4",
+        Some("flac") => "audio/flac",
+        Some("wav") => "audio/wav",
+        Some("ogg") | Some("oga") | Some("opus") => "audio/ogg",
+        Some("aac") => "audio/aac",
+        Some("webm") => "audio/webm",
+        _ => "application/octet-stream",
+    }
+}
+
+/// `Range: bytes=a-b | a- | -n`. None = no usable single range (serve the whole file); Some(Err) = not satisfiable.
+fn parse_range(h: &str, len: u64) -> Option<Result<(u64, u64), ()>> {
+    let spec = h.trim().strip_prefix("bytes=")?;
+    if spec.contains(',') {
+        return None;
+    }
+    let (a, b) = spec.split_once('-')?;
+    let (start, end) = if a.is_empty() {
+        let n: u64 = b.trim().parse().ok()?;
+        if n == 0 {
+            return Some(Err(()));
+        }
+        (len.saturating_sub(n), len - 1)
+    } else {
+        let s: u64 = a.trim().parse().ok()?;
+        let e = if b.trim().is_empty() { len - 1 } else { b.trim().parse::<u64>().ok()?.min(len - 1) };
+        (s, e)
+    };
+    if start >= len || start > end {
+        return Some(Err(()));
+    }
+    Some(Ok((start, end)))
+}
+
+fn serve_audio(req: Request, path: &Path) {
+    let mut f = match fs::File::open(path) {
+        Ok(f) => f,
+        Err(_) => return send_empty(req, 404),
+    };
+    let len = f.metadata().map(|m| m.len()).unwrap_or(0);
+    if len == 0 {
+        return send_empty(req, 404);
+    }
+    let range = req.headers().iter().find(|h| h.field.equiv("range")).map(|h| h.value.as_str().to_string());
+    let (start, end, status) = match range.as_deref().and_then(|r| parse_range(r, len)) {
+        Some(Ok((s, e))) => (s, e, 206u16),
+        Some(Err(())) => {
+            let r = Response::empty(416).with_header(header("Content-Range", &format!("bytes */{}", len)));
+            let _ = req.respond(r);
+            return;
+        }
+        None => (0, len - 1, 200u16),
+    };
+    if f.seek(SeekFrom::Start(start)).is_err() {
+        return send_empty(req, 500);
+    }
+    let n = end - start + 1;
+    let mut headers = vec![
+        header("Content-Type", audio_ctype(path)),
+        header("Accept-Ranges", "bytes"),
+        header("Cache-Control", "no-store"),
+        header("X-Content-Type-Options", "nosniff"),
+    ];
+    if status == 206 {
+        headers.push(header("Content-Range", &format!("bytes {}-{}/{}", start, end, len)));
+    }
+    let body = BufReader::with_capacity(256 * 1024, f.take(n));
+    let _ = req.respond(Response::new(StatusCode(status), headers, body, Some(n as usize), None));
+}
+
+// ---- end of PROTOTYPE ----
 
 fn new_part_path(sh: &Shared) -> PathBuf {
     let n = sh.file_seq.fetch_add(1, Ordering::Relaxed);
@@ -785,6 +921,61 @@ mod tests {
         assert_eq!(http(p, "POST", "/r/nopenopenopenopenope/api/upload", &[("X-Filename", "a.mp3")], b"abc").0, 404);
         assert_eq!(fs::read_dir(&inc).unwrap().count(), before);
         r.stop();
+    }
+
+    #[test]
+    fn audio_stream_and_ranges() {
+        let (r, inc) = start("audio");
+        let p = r.port();
+        let root = inc.parent().unwrap().join("Music");
+        fs::create_dir_all(root.join("sub")).unwrap();
+        let data: Vec<u8> = (0..1000u32).map(|i| (i % 251) as u8).collect();
+        fs::write(root.join("a.mp3"), &data).unwrap();
+        fs::write(root.join("sub").join("b.flac"), b"flacdata").unwrap();
+        fs::write(root.join("notes.txt"), b"secret").unwrap();
+        fs::write(root.parent().unwrap().join("outside.mp3"), b"outside").unwrap();
+        // nothing known yet
+        assert_eq!(http(p, "GET", &url("/api/audio?id=1"), &[], b"").0, 404);
+        let r2 = root.clone();
+        r.set_audio_root(Arc::new(move || r2.clone()));
+        r.push_files(r#"{"1":"a.mp3","2":"sub/b.flac","3":"notes.txt","4":"../outside.mp3","5":"missing.mp3","x":"a.mp3"}"#.into()).unwrap();
+        let g = |path: &str, hdr: &[(&str, &str)]| http(p, "GET", &url(path), hdr, b"");
+        assert_eq!(g("/api/audio?id=1", &[]), (200, data.clone()));
+        assert_eq!(g("/api/audio?id=2", &[]), (200, b"flacdata".to_vec()));
+        assert_eq!(g("/api/audio?id=1", &[("Range", "bytes=10-19")]), (206, data[10..20].to_vec()));
+        assert_eq!(g("/api/audio?id=1", &[("Range", "bytes=990-")]), (206, data[990..].to_vec()));
+        assert_eq!(g("/api/audio?id=1", &[("Range", "bytes=-5")]), (206, data[995..].to_vec()));
+        assert_eq!(g("/api/audio?id=1", &[("Range", "bytes=0-99999")]), (206, data.clone()));
+        assert_eq!(g("/api/audio?id=1", &[("Range", "bytes=1000-")]).0, 416);
+        assert_eq!(g("/api/audio?id=1", &[("Range", "bytes=5-2")]).0, 416);
+        assert_eq!(g("/api/audio?id=1", &[("Range", "bytes=0-1,5-6")]), (200, data.clone()), "multi-range falls back to the whole file");
+        assert_eq!(g("/api/audio?id=1", &[("Range", "junk")]), (200, data.clone()));
+        // not audio, outside the folder, missing file, unknown or bad id, no id
+        for bad in ["/api/audio?id=3", "/api/audio?id=4", "/api/audio?id=5", "/api/audio?id=99", "/api/audio?id=abc", "/api/audio"] {
+            assert_eq!(g(bad, &[]).0, 404, "{}", bad);
+        }
+        assert_eq!(http(p, "GET", "/r/nopenopenopenopenope/api/audio?id=1", &[], b"").0, 404);
+        // the folder can change: the next request follows it
+        let other = inc.parent().unwrap().join("Music2");
+        fs::create_dir_all(&other).unwrap();
+        fs::write(other.join("a.mp3"), b"other").unwrap();
+        let o2 = other.clone();
+        r.set_audio_root(Arc::new(move || o2.clone()));
+        assert_eq!(g("/api/audio?id=1", &[]), (200, b"other".to_vec()));
+        assert!(r.push_files("[1]".into()).is_err());
+        r.stop();
+    }
+
+    #[test]
+    fn range_parser() {
+        assert_eq!(parse_range("bytes=0-0", 10), Some(Ok((0, 0))));
+        assert_eq!(parse_range("bytes=3-", 10), Some(Ok((3, 9))));
+        assert_eq!(parse_range("bytes=-4", 10), Some(Ok((6, 9))));
+        assert_eq!(parse_range("bytes=-99", 10), Some(Ok((0, 9))));
+        assert_eq!(parse_range("bytes=-0", 10), Some(Err(())));
+        assert_eq!(parse_range("bytes=10-", 10), Some(Err(())));
+        assert_eq!(parse_range("items=1-2", 10), None);
+        assert_eq!(parse_range("bytes=a-b", 10), None);
     }
 
     #[test]

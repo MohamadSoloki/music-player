@@ -155,6 +155,10 @@ body:not(.playing) .eq i{animation-play-state:paused}
   .title{font-size:18px;text-align:start}.sub{text-align:start}
 }
 @media (min-width:760px){main{padding-inline:max(16px,calc(50vw - 380px))}header{padding-inline:max(16px,calc(50vw - 380px))}}
+.seg{display:flex;gap:4px;padding:3px;margin:4px 0 12px;border-radius:99px;background:color-mix(in srgb,var(--panel) 80%,transparent);border:1px solid var(--line)}
+.seg button{flex:1;padding:8px 10px;border-radius:99px;font-size:13px;font-weight:600;color:var(--muted)}
+.seg button.on{background:var(--accent);color:var(--on-accent)}
+body.pm .pit,body.pm #notifRow{display:none!important}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -164,6 +168,7 @@ body:not(.playing) .eq i{animation-play-state:paused}
 <header><b>Music remote</b><span class="pill"><span id="dot"></span><span id="stat">Connecting…</span></span></header>
 <main>
   <section class="view on" id="v-now">
+    <div class="seg" id="modeSeg" role="group" aria-label="Where the music plays"><button data-m="pc" class="on" aria-pressed="true">On the computer</button><button data-m="phone" aria-pressed="false">On this phone</button></div>
     <div class="stage">
     <div class="left">
     <div class="cover" id="cover"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
@@ -193,7 +198,7 @@ body:not(.playing) .eq i{animation-play-state:paused}
       <div class="fxr"><div class="lab"><span>Speed</span><output id="fxSV">1.00×</output></div>
         <input type="range" id="fxS" min="0.5" max="2" step="0.05" value="1" aria-label="Playback speed">
         <div class="chips"><button class="chip" data-fs="0.75">0.75×</button><button class="chip" data-fs="1">1×</button><button class="chip" data-fs="1.25">1.25×</button><button class="chip" data-fs="1.5">1.5×</button></div></div>
-      <div class="fxr"><div class="lab"><span>Pitch</span><output id="fxPV">0</output></div>
+      <div class="fxr pit"><div class="lab"><span>Pitch</span><output id="fxPV">0</output></div>
         <input type="range" id="fxP" min="-12" max="12" step="0.5" value="0" aria-label="Pitch in semitones">
         <div class="chips"><button class="chip" data-fp="-2">−2</button><button class="chip" data-fp="-1">−1</button><button class="chip" data-fp="0">0</button><button class="chip" data-fp="1">+1</button><button class="chip" data-fp="2">+2</button></div></div>
       <label class="lnk"><input type="checkbox" id="fxL"><span><b>Change pitch together with speed</b><br><small>Faster = higher voice (nightcore), slower = deeper voice.</small></span></label>
@@ -276,9 +281,11 @@ function tfetch(url, opt, ms){
   const ac = new AbortController(), k = setTimeout(() => ac.abort(), ms || 8000);
   return fetch(url, Object.assign({signal: ac.signal}, opt)).finally(() => clearTimeout(k));
 }
-function cmd(o){
+function rawCmd(o){
   return tfetch(BASE + 'api/cmd', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(o)}, 6000).catch(() => toast('Could not reach the computer'));
 }
+// every control goes through cmd(): to the computer, or (PROTOTYPE "On this phone") to the player of this page
+function cmd(o){ return PM ? lpExec(o) : rawCmd(o); }
 
 /* ---- tabs ---- */
 let tab = 'now';
@@ -563,7 +570,8 @@ async function poll(){
       if(!r.ok) throw new Error('http ' + r.status);
       const j = await r.json();
       clearTimeout(kill); fails = 0; $('#dot').className = 'ok'; $('#stat').textContent = 'Connected'; $('#lost').classList.add('hidden');
-      ver = j.v; S = j.s || {}; at = Date.now();
+      ver = j.v;
+      if(!PM){ S = j.s || {}; at = Date.now(); }   // on the phone, the state comes from the local player
       if(j.lv !== libVer){ libVer = j.lv; loadLib(); }
       setCover(j.cv);
       for(const n of (j.n || [])){ if(lastNote < 0) continue; if(n.i > lastNote) toast(n.m); }
@@ -578,6 +586,98 @@ async function poll(){
     }
   }
 }
+/* ---- PROTOTYPE: play on this phone ----
+   The page streams the songs from the computer (GET api/audio?id=) and plays them with its own <audio>. Every control
+   still calls cmd(), which routes here while PM is true. Pitch in semitones is not available here (speed is; "link" = nightcore).
+   To remove the prototype: delete this block, the .seg bar, the PM checks and body.pm rules (see AGENTS.md). */
+const A = new Audio();
+A.preload = 'auto'; A.setAttribute('playsinline', '');
+const LP = {id: null, q: [], i: -1, up: [], shuffle: false, repeat: 0, fx: {s: 1, p: 0, l: false}};
+function lpSync(){
+  const t = byId.get(LP.id);
+  S = {id: LP.id, title: t ? t.t : '', artist: t ? t.a : '', album: t ? t.al : '', playing: !A.paused && !A.ended, t: A.currentTime || 0,
+    d: isFinite(A.duration) && A.duration > 0 ? A.duration : (t ? t.d : 0), vol: A.volume, muted: A.muted, shuffle: LP.shuffle, repeat: LP.repeat,
+    fav: !!(t && t.f), up: LP.up.slice(), fx: Object.assign({}, LP.fx)};
+  at = Date.now(); paint();
+}
+function lpFx(){
+  A.defaultPlaybackRate = A.playbackRate = LP.fx.s;   // a new src resets playbackRate to the default one
+  A.preservesPitch = A.mozPreservesPitch = A.webkitPreservesPitch = !LP.fx.l;
+}
+function lpPlay(id){
+  if(!byId.has(id)) return;
+  LP.id = id; A.src = BASE + 'api/audio?id=' + id; lpFx();
+  A.play().catch(e => { if(e && e.name !== 'AbortError') toast('Could not play this song'); });
+  lpSync(); rawCmd({op: 'cover', id});
+}
+function lpIds(c){
+  let l = LIB.tracks;
+  if(c.src === 'pl'){ const p = LIB.playlists.find(x => x.id === +c.pl); l = p ? p.ids.map(i => byId.get(i)).filter(Boolean) : []; }
+  else {
+    const q = String(c.q || '').trim().toLowerCase();
+    if(q) l = l.filter(t => (t.t + ' ' + t.a + ' ' + t.al).toLowerCase().includes(q));
+    l = l.slice();
+    if(c.sort === 'title') l.sort((a, b) => col.compare(a.t, b.t)); else if(c.sort === 'artist') l.sort((a, b) => col.compare(a.a, b.a)); else l.sort((a, b) => b.id - a.id);
+  }
+  return l.map(t => t.id);
+}
+function lpNext(manual){
+  if(LP.up.length){ lpPlay(LP.up.shift()); return; }
+  const n = LP.q.length; if(!n) return;
+  let i;
+  if(LP.shuffle && n > 1){ do{ i = Math.floor(Math.random() * n); }while(i === LP.i); }
+  else { i = LP.i + 1; if(i >= n){ if(LP.repeat === 1 || manual) i = 0; else { A.pause(); A.currentTime = 0; lpSync(); return; } } }
+  LP.i = i; lpPlay(LP.q[i]);
+}
+function lpPrev(){
+  if(A.currentTime > 3 || LP.i <= 0){ A.currentTime = 0; return; }
+  LP.i--; lpPlay(LP.q[LP.i]);
+}
+function lpExec(c){
+  const dur = isFinite(A.duration) ? A.duration : 0;
+  switch(c.op){
+    case 'toggle': case 'play':
+      if(LP.id == null){ const l = lpIds({sort: 'new'}); if(l.length) lpExec({op: 'playTrack', id: l[0], src: 'all'}); }
+      else if(A.paused) A.play().catch(() => {}); else if(c.op === 'toggle') A.pause();
+      break;
+    case 'pause': A.pause(); break;
+    case 'next': lpNext(true); break;
+    case 'prev': lpPrev(); break;
+    case 'seek': if(dur){ A.currentTime = Math.max(0, Math.min(dur, +c.t || 0)); S.t = A.currentTime; at = Date.now(); } break;
+    case 'skip': if(dur){ A.currentTime = Math.max(0, Math.min(dur, A.currentTime + (+c.d || 0))); S.t = A.currentTime; at = Date.now(); } break;
+    case 'vol': A.volume = Math.min(1, Math.max(0, +c.v || 0)); A.muted = false; break;
+    case 'mute': A.muted = !A.muted; break;
+    case 'shuffle': LP.shuffle = !LP.shuffle; lpSync(); break;
+    case 'repeat': LP.repeat = (LP.repeat + 1) % 3; lpSync(); break;
+    case 'fav': { const t = byId.get(LP.id); if(t){ t.f = t.f ? 0 : 1; rawCmd({op: 'favId', id: t.id}); lpSync(); } break; }
+    case 'playTrack': { const ids = lpIds(c); LP.q = ids.includes(c.id) ? ids : [c.id]; LP.i = LP.q.indexOf(c.id); lpPlay(c.id); break; }
+    case 'playPl': { const ids = lpIds({src: 'pl', pl: c.pl}); if(!ids.length) break; LP.q = ids; LP.i = LP.shuffle ? Math.floor(Math.random() * ids.length) : 0; lpPlay(ids[LP.i]); break; }
+    case 'queue': if(byId.has(c.id)){ if(c.next) LP.up.unshift(c.id); else LP.up.push(c.id); lpSync(); } break;
+    case 'dequeue': { const k = LP.up.indexOf(c.id); if(k >= 0){ LP.up.splice(k, 1); lpSync(); } break; }
+    case 'fx': {
+      const P = {original: {s: 1, p: 0, l: false}, slowed: {s: 0.85, p: 0, l: true}, nightcore: {s: 1.25, p: 0, l: true}};
+      if(P[c.preset]) LP.fx = Object.assign({}, P[c.preset]);
+      else { if(c.s != null && isFinite(+c.s)) LP.fx.s = Math.min(2, Math.max(0.5, +c.s)); if(c.l != null) LP.fx.l = !!c.l; }
+      lpFx(); lpSync(); break;
+    }
+  }
+}
+A.onplay = A.onpause = A.onvolumechange = A.ondurationchange = lpSync;
+A.onended = () => { if(LP.repeat === 2){ A.currentTime = 0; A.play().catch(() => {}); } else lpNext(false); };
+A.ontimeupdate = () => { if(PM){ S.t = A.currentTime; at = Date.now(); } };
+A.onerror = () => { if(PM && LP.id != null){ toast('Could not play this song'); lpSync(); } };
+let PM = false;
+function setMode(pm){
+  if(pm === PM) return;
+  if(pm){ rawCmd({op: 'pause'}); PM = true; if(MS) msHandlers(true); if(msAudio) msAudio.pause(); lpSync(); }
+  else { A.pause(); PM = false; if(MS) msHandlers(msOn); if(msOn && msAudio) msAudio.play().catch(() => {}); S = {}; if(curAc){ kicked = true; curAc.abort(); } paint(); }
+  document.body.classList.toggle('pm', PM);
+  document.querySelectorAll('#modeSeg button').forEach(b => { const on = (b.dataset.m === 'phone') === PM; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
+  try{ localStorage.setItem('mr_pm', PM ? '1' : '0'); }catch(e){}
+}
+document.querySelectorAll('#modeSeg button').forEach(b => b.onclick = () => setMode(b.dataset.m === 'phone'));
+/* ---- end of PROTOTYPE ---- */
+
 /* ---- notification bar / lock screen controls (Media Session) ----
    Phones show the media notification only for a page that is playing sound, so while this is on the page plays a
    10-second silent loop. It is opt-in because it takes the phone's audio focus (other music may pause). */
@@ -598,7 +698,7 @@ function msHandlers(on){
   set('seekto', d => { if(d && d.seekTime != null) cmd({op: 'seek', t: d.seekTime}); });
 }
 function syncSession(){
-  if(!MS || !msOn) return;
+  if(!MS || !(msOn || PM)) return;
   const title = S.title || (byId.get(S.id) || {}).t || '';
   const key = [S.id, title, S.artist, S.album, coverUrl].join('|');
   if(key !== msKey){
@@ -615,7 +715,7 @@ async function msEnable(on){
   msHandlers(on);
   if(on){
     if(!msAudio){ msAudio = new Audio(silentWav()); msAudio.loop = true; msAudio.setAttribute('playsinline', ''); }
-    try{ await msAudio.play(); }catch(e){}   // without a tap the browser refuses; the next tap retries
+    if(!PM) try{ await msAudio.play(); }catch(e){}   // without a tap the browser refuses; the next tap retries
     msKey = ''; syncSession();
   } else {
     if(msAudio) msAudio.pause();
@@ -625,12 +725,13 @@ async function msEnable(on){
 if(MS){
   $('#notifRow').classList.remove('hidden');
   $('#notifOn').onchange = () => msEnable($('#notifOn').checked);
-  document.addEventListener('pointerdown', () => { if(msOn && msAudio && msAudio.paused) msAudio.play().catch(() => {}); }, {passive: true});
+  document.addEventListener('pointerdown', () => { if(msOn && !PM && msAudio && msAudio.paused) msAudio.play().catch(() => {}); }, {passive: true});
   try{ if(localStorage.getItem('mr_notif') === '1') msEnable(true); }catch(e){}
 }
 // the phone may pause timers in the background: refresh as soon as the page is visible again
 document.addEventListener('visibilitychange', () => { if(!document.hidden && curAc){ kicked = true; curAc.abort(); } });
 try{ const v = sessionStorage.getItem('mr_tab'); if(v && document.querySelector('nav button[data-v=' + v + ']')) go(v); }catch(e){}
+try{ if(localStorage.getItem('mr_pm') === '1') setMode(true); }catch(e){}
 paint(); poll();
 })();
 </script>

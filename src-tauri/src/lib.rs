@@ -187,6 +187,9 @@ fn remote_start(
         old.stop();
     }
     let r = Arc::new(remote::Remote::start(remote::Config { port, token, incoming })?);
+    // PROTOTYPE (play on this phone): the server finds songs in the music folder that is current at each request
+    let app2 = app.clone();
+    r.set_audio_root(Arc::new(move || current_music_dir(&app2).unwrap_or_default()));
     let info = RemoteInfo { port: r.port(), addrs: remote::local_addrs() };
     *slot = Some(r);
     Ok(info)
@@ -210,7 +213,7 @@ async fn remote_poll(state: tauri::State<'_, RemoteState>, timeout_ms: u64) -> R
         .map_err(|e| e.to_string())
 }
 
-/// kind: "state" | "library" | "notice"
+/// kind: "state" | "library" | "files" | "notice"
 #[tauri::command]
 fn remote_push(state: tauri::State<'_, RemoteState>, kind: String, data: String) -> Result<(), String> {
     let Some(r) = current_remote(&state) else {
@@ -219,6 +222,7 @@ fn remote_push(state: tauri::State<'_, RemoteState>, kind: String, data: String)
     match kind.as_str() {
         "state" => r.push_state(data),
         "library" => r.push_library(data),
+        "files" => r.push_files(data),
         "notice" => {
             r.push_notice(data);
             Ok(())

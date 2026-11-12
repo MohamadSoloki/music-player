@@ -3226,18 +3226,28 @@ function remLibrary(){
     theme: {accent: theme.accent, bg: theme.bg, panel: theme.panel, text: theme.text}
   });
 }
+// PROTOTYPE (play on this phone): which file belongs to which song, so the server can stream it. Never sent to the phone.
+function remFiles(){
+  const o = {};
+  for(const t of S.tracks.values()) if(t.file) o[t.id] = t.file;
+  return JSON.stringify(o);
+}
 function remLibDirty(){
   if(!REM.on || REM.libT) return;
   REM.libT = setTimeout(() => {
     REM.libT = 0; if(!REM.on) return;
     const j = remLibrary();
     if(j !== REM.libJson){ REM.libJson = j; remSend('library', j); }
+    const f = remFiles();   // PROTOTYPE (play on this phone)
+    if(f !== REM.filesJson){ REM.filesJson = f; remSend('files', f); }
   }, 700);
 }
 // small JPEG of the current cover for the phone
-async function remCover(){
-  if(!REM.on || REM.coverFor === S.curId) return;
-  const id = S.curId; REM.coverFor = id;
+async function remCover(want){
+  // `want`: PROTOTYPE (play on this phone) the phone asks for the cover of the song it plays itself
+  const id = want != null ? want : S.curId;
+  if(!REM.on || REM.coverFor === id) return;
+  REM.coverFor = id;
   let bytes = [];
   try{
     const t = S.tracks.get(id);
@@ -3251,7 +3261,7 @@ async function remCover(){
       if(out) bytes = Array.from(new Uint8Array(await out.arrayBuffer()));
     }
   }catch(e){ console.warn('remote cover', e); }
-  if(REM.on && S.curId === id) remInvoke('remote_cover', {bytes}).catch(() => {});
+  if(REM.on && REM.coverFor === id) remInvoke('remote_cover', {bytes}).catch(() => {});
 }
 async function remStart(){
   if(!FOLDER) throw new Error('The phone remote works in the Windows app only');
@@ -3259,7 +3269,7 @@ async function remStart(){
   const gen = ++REM.gen;
   REM.info = await remInvoke('remote_start', {port: REM.cfg.port, token: REM.cfg.token});
   REM.on = true; REM.cfg.on = true; REM.cfg.port = REM.info.port; remSave();
-  REM.coverFor = undefined; REM.libJson = '';
+  REM.coverFor = undefined; REM.libJson = ''; REM.filesJson = '';
   $('#btnRemote').classList.add('live');
   clearInterval(REM.tick);
   REM.tick = setInterval(() => { if(REM.on && S.playing) remPush(); }, 2000);   // keeps the phone's clock in step
@@ -3311,6 +3321,8 @@ async function remExec(c){
     case 'shuffle': $('#btnShuffle').click(); break;
     case 'repeat': $('#btnRepeat').click(); break;
     case 'fav': if(S.curId != null) await toggleFav(S.curId); break;
+    case 'favId': { const id = +c.id; if(S.tracks.has(id)) await toggleFav(id); break; }   // PROTOTYPE (play on this phone)
+    case 'cover': { const id = +c.id; if(S.tracks.has(id)) remCover(id); break; }   // PROTOTYPE
     case 'playTrack': {
       const id = +c.id; if(!S.tracks.has(id)) break;
       const ids = remIds(c); playList(ids.includes(id) ? ids : [id], id); break;
