@@ -412,6 +412,24 @@ input.tog{-webkit-appearance:none;appearance:none;flex:none;width:42px;height:24
 input.tog::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .15s;box-shadow:0 1px 3px rgba(0,0,0,.4)}
 input.tog:checked{background:var(--accent)}input.tog:checked::after{transform:translateX(18px)}
 .trow .tl small.warn{color:var(--danger);display:flex;gap:6px;align-items:flex-start}
+/* equalizer */
+#player{z-index:5}.pop.eqpro{width:min(660px,calc(100vw - 32px));max-height:calc(100vh - 130px);overflow:auto}
+.eqhead{display:flex;align-items:center;gap:12px}
+.eqsw{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:400;color:var(--muted);cursor:pointer}
+.eqprof{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-bottom:8px}
+.eqp{padding:8px 6px;border-radius:10px;background:var(--panel2);border:1px solid var(--line);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.eqp:hover{border-color:var(--accent2)}.eqp.sel{background:var(--accent-soft);border-color:var(--accent);font-weight:600}
+.eqname{display:flex;gap:6px;margin-bottom:10px}.eqname .inp{flex:1;min-width:0;padding:6px 10px}
+.eqcv{display:block;width:100%;height:170px;border-radius:12px;background:color-mix(in srgb,var(--bg) 60%,transparent);border:1px solid var(--line);touch-action:none;cursor:ns-resize}
+.eqpro .eqbands{margin:8px 0 6px}.eqpro .eqb{width:10%}.eqpro .eqb input[type=range]{height:96px}
+.eqrow{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px}
+.eqrow label{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.eqrow output{min-width:52px;text-align:end;color:var(--text);font-variant-numeric:tabular-nums}
+.eqopts{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;margin-top:10px}
+.eqopts label{display:flex;gap:10px;align-items:flex-start;font-size:13px;cursor:pointer}
+.eqopts small{display:block;color:var(--muted);font-size:11px;line-height:1.5;margin-top:1px}
+.eq-off .eqbands,.eq-off .eqrow,.eq-off .eqcv{opacity:.45}
+@media (max-width:700px){.eqrow,.eqopts{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -499,11 +517,15 @@ input.tog:checked{background:var(--accent)}input.tog:checked::after{transform:tr
       <input type="range" id="vol" min="0" max="1" step="0.01" value="0.8">
     </div>
 
-    <div id="eqPop" class="pop hidden">
-      <h4><span>Equalizer</span><button class="ib" id="eqClose" data-icon="x" style="width:30px;height:30px"></button></h4>
+    <div id="eqPop" class="pop eqpro hidden">
+      <h4><span>Equalizer</span><span class="eqhead"><label class="eqsw"><input type="checkbox" class="tog" id="eqOn" role="switch" aria-label="Equalizer on or off"><span>On</span></label><button class="ib" id="eqClose" data-icon="x" style="width:30px;height:30px"></button></span></h4>
+      <div class="eqprof" id="eqProf" role="tablist" aria-label="Profiles"></div>
+      <div class="eqname"><input class="inp" id="eqName" maxlength="20" dir="auto" aria-label="Profile name" placeholder="Profile name"><button class="btn sm" id="eqFlat" title="Set every band and the preamp to 0">Flatten</button><button class="btn sm" id="eqFactory" title="Put the original settings of this profile back">Reset profile</button></div>
+      <canvas id="eqCv" class="eqcv" aria-label="Equalizer curve. Drag a point up or down; double-click a point to set it to 0."></canvas>
       <div class="eqbands" id="eqBands"></div>
-      <div class="chips" id="eqPresets"></div>
-      <div class="hint">Moving any band turns the equalizer on automatically. When all bands are at zero it is off and uses no processing.</div>
+      <div class="eqrow"><label>Preamp<input type="range" id="eqPre" min="-12" max="12" step="0.5"><output id="eqPreV"></output></label><label>Band width (Q)<input type="range" id="eqQ" min="0.4" max="4" step="0.1"><output id="eqQV"></output></label></div>
+      <div class="eqopts"><label><input type="checkbox" class="tog" id="eqSafe" role="switch"><span>Prevent clipping<small>Lowers the level when bands are boosted and adds a limiter</small></span></label><label><input type="checkbox" class="tog" id="eqSpec" role="switch"><span>Spectrum<small>Live sound levels behind the curve (uses a little more CPU)</small></span></label></div>
+      <div class="hint">Changes are saved in the selected profile at once. When every band and the preamp are at 0 (or the switch is off), the equalizer uses no processing.</div>
     </div>
     <div id="sleepPop" class="pop hidden">
       <h4><span>Sleep timer</span><button class="ib" id="sleepClose" data-icon="x" style="width:30px;height:30px"></button></h4>
@@ -679,19 +701,71 @@ function dbAddTrack(meta, audioBlob, coverBlob){
   });
 }
 
-/* ================= Equalizer: base settings ================= */
-const EQ_FREQ = [60, 230, 910, 3600, 14000];
-const EQ_PRESETS = [
-  ['Flat', [0, 0, 0, 0, 0]], ['Bass boost', [7, 5, 1, 0, 0]], ['Treble boost', [0, 0, 0, 4, 6]],
-  ['Vocal', [-2, -1, 3, 4, 1]], ['Rock', [5, 3, -2, 3, 5]], ['Pop', [-1, 2, 4, 2, -1]]
+/* ================= Equalizer: base settings =================
+   10 bands (a low shelf, eight peaking bands, a high shelf), a preamp and a band width (Q) per profile, 5 profiles.
+   Every change is saved into the profile that is selected; "Reset profile" brings back its factory values. */
+const EQ_FREQ = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
+const EQ_LABEL = ['31', '62', '125', '250', '500', '1k', '2k', '4k', '8k', '16k'];
+const EQ_FACTORY = [
+  {name:'Flat', g:[0, 0, 0, 0, 0, 0, 0, 0, 0, 0], pre:0, q:1.4},
+  {name:'Bass boost', g:[6, 6, 5, 3, 1, 0, 0, 0, 0, 0], pre:0, q:1.4},
+  {name:'Vocal', g:[-2, -2, -1, 0, 2, 3, 3, 2, 0, -1], pre:0, q:1.4},
+  {name:'Rock', g:[5, 4, 2, -1, -2, -1, 2, 4, 5, 5], pre:0, q:1.4},
+  {name:'Soft', g:[3, 2, 1, 0, 0, 0, -1, -2, -3, -4], pre:0, q:1.4}
 ];
-function loadEq(){
-  const v = store.get('mp_eq', null);
-  const g = (v && Array.isArray(v.g) ? v.g : []).slice(0, 5).map(x => Math.max(-12, Math.min(12, Number(x) || 0)));
-  while(g.length < 5) g.push(0);
-  return {g};
+const eqNum = (v, lo, hi, d) => { v = Number(v); return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
+function eqCleanProfile(p, i){
+  const f = EQ_FACTORY[i], g = (p && Array.isArray(p.g) ? p.g : f.g).slice(0, 10).map(x => eqNum(x, -12, 12, 0));
+  while(g.length < 10) g.push(0);
+  return {name: (typeof (p && p.name) === 'string' && p.name.trim() ? p.name.trim() : f.name).slice(0, 20), g, pre: eqNum(p && p.pre, -12, 12, 0), q: eqNum(p && p.q, 0.4, 4, 1.4)};
 }
-const eqActive = () => S.eq.g.some(x => Math.abs(x) > 0.05);
+function loadEq(){
+  const v = store.get('mp_eq', null), prof = EQ_FACTORY.map((f, i) => eqCleanProfile(f, i));
+  const out = {on: true, safe: true, spec: false, cur: 0, prof};
+  if(v && Array.isArray(v.prof)){
+    for(let i = 0; i < 5; i++) out.prof[i] = eqCleanProfile(v.prof[i], i);
+    out.on = v.on !== false; out.safe = v.safe !== false; out.spec = !!v.spec; out.cur = eqNum(v.cur, 0, 4, 0) | 0;
+  } else if(v && Array.isArray(v.g) && v.g.some(x => Math.abs(Number(x) || 0) > 0.05)){
+    // the old 5-band equalizer: spread its settings over the 10 bands (kept in profile 1)
+    const OF = [60, 230, 910, 3600, 14000], og = v.g.slice(0, 5).map(x => eqNum(x, -12, 12, 0));
+    while(og.length < 5) og.push(0);
+    const g = EQ_FREQ.map(f => {
+      if(f <= OF[0]) return og[0];
+      if(f >= OF[4]) return og[4];
+      let k = 0; while(f > OF[k + 1]) k++;
+      const t = Math.log(f / OF[k]) / Math.log(OF[k + 1] / OF[k]);
+      return Math.round((og[k] + (og[k + 1] - og[k]) * t) * 2) / 2;
+    });
+    out.prof[0] = {name: 'My EQ', g, pre: 0, q: 1.4};
+  }
+  return out;
+}
+const eqProf = () => S.eq.prof[S.eq.cur];
+const eqActive = () => { if(!S.eq.on) return false; const p = eqProf(); return Math.abs(p.pre) > 0.05 || p.g.some(x => Math.abs(x) > 0.05); };
+const eqSpecWanted = () => S.eq.spec && !$('#eqPop').classList.contains('hidden');
+// the response of the 10 filters in dB (the same formulas the browser uses, so the curve needs no audio graph)
+function eqCoef(i, gainDb, q, fs){
+  const A = Math.pow(10, gainDb / 40), w = 2 * Math.PI * EQ_FREQ[i] / fs, cw = Math.cos(w), sw = Math.sin(w);
+  if(i === 0 || i === 9){
+    const al = sw / 2 * Math.SQRT2, k = 2 * Math.sqrt(A) * al, lo = i === 0;
+    return lo ? [A * ((A + 1) - (A - 1) * cw + k), 2 * A * ((A - 1) - (A + 1) * cw), A * ((A + 1) - (A - 1) * cw - k), (A + 1) + (A - 1) * cw + k, -2 * ((A - 1) + (A + 1) * cw), (A + 1) + (A - 1) * cw - k]
+              : [A * ((A + 1) + (A - 1) * cw + k), -2 * A * ((A - 1) + (A + 1) * cw), A * ((A + 1) + (A - 1) * cw - k), (A + 1) - (A - 1) * cw + k, 2 * ((A - 1) - (A + 1) * cw), (A + 1) - (A - 1) * cw - k];
+  }
+  const al = sw / (2 * q);
+  return [1 + al * A, -2 * cw, 1 - al * A, 1 + al / A, -2 * cw, 1 - al / A];
+}
+function eqCurve(p, freqs){
+  const fs = 48000, cs = p.g.map((g, i) => eqCoef(i, g, p.q, fs));
+  return freqs.map(f => {
+    const w = 2 * Math.PI * f / fs, c1 = Math.cos(w), s1 = Math.sin(w), c2 = Math.cos(2 * w), s2 = Math.sin(2 * w);
+    let db = 0;
+    for(const c of cs){
+      const nr = c[0] + c[1] * c1 + c[2] * c2, ni = -(c[1] * s1 + c[2] * s2), dr = c[3] + c[4] * c1 + c[5] * c2, di = -(c[4] * s1 + c[5] * s2);
+      db += 10 * Math.log10((nr * nr + ni * ni) / (dr * dr + di * di));
+    }
+    return db;
+  });
+}
 
 /* ================= Backup (library.json) =================
    Names, artists, albums, covers, playlists, favorites and settings are saved next to the music folder
@@ -1007,7 +1081,7 @@ class Jungle{
 const audio = new Audio();
 audio.preload = 'auto';
 let ctx = null, G = null, curUrl = null, idleT = null;
-const needGraph = () => Math.abs(S.fx.pitch) >= 0.01 || eqActive();
+const needGraph = () => Math.abs(S.fx.pitch) >= 0.01 || eqActive() || eqSpecWanted();
 const gestured = () => !navigator.userActivation || navigator.userActivation.hasBeenActive;
 
 function ensureGraph(){
@@ -1021,12 +1095,16 @@ function ensureGraph(){
       const filters = EQ_FREQ.map((f, i) => {
         const b = c.createBiquadFilter();
         b.type = i === 0 ? 'lowshelf' : (i === EQ_FREQ.length - 1 ? 'highshelf' : 'peaking');
-        b.frequency.value = f; b.Q.value = 1;
+        b.frequency.value = f; b.Q.value = 1.4;
         return b;
       });
       pre.connect(filters[0]);
       for(let i = 0; i < filters.length - 1; i++) filters[i].connect(filters[i + 1]);
-      G = {c, src, pre, filters, last: filters[filters.length - 1], jungle: null, sig: ''};
+      // a limiter after the filters (only used with "Prevent clipping") and an analyser for the spectrum view
+      const lim = c.createDynamicsCompressor();
+      lim.threshold.value = -1.5; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.002; lim.release.value = 0.09;
+      const an = c.createAnalyser(); an.fftSize = 2048; an.smoothingTimeConstant = 0.8;
+      G = {c, src, pre, filters, lim, an, last: filters[filters.length - 1], jungle: null, sig: ''};
       ctx = c;
     }catch(e){ console.error(e); ctx = null; G = null; return; }
     rewire(true);
@@ -1037,22 +1115,25 @@ function ensureGraph(){
 // audio path: source → (equalizer) → (pitch shifter) → output. Parts that are off are not connected at all.
 function rewire(full){
   if(!G) return;
-  const pOn = Math.abs(S.fx.pitch) >= 0.01, eOn = eqActive();
-  const sig = (pOn ? 'p' : '-') + (eOn ? 'e' : '-');
-  const mx = Math.max(0, ...S.eq.g);
-  G.pre.gain.value = Math.pow(10, -mx / 20);          // avoid distortion when bands are boosted
-  G.filters.forEach((f, i) => { f.gain.value = S.eq.g[i]; });
+  const pOn = Math.abs(S.fx.pitch) >= 0.01, eOn = eqActive(), lOn = eOn && S.eq.safe, aOn = eqSpecWanted();
+  const sig = (pOn ? 'p' : '-') + (eOn ? 'e' : '-') + (lOn ? 'l' : '-') + (aOn ? 'a' : '-');
+  const p = eqProf(), now = G.c.currentTime;
+  // "Prevent clipping" lowers the level by the strongest boost, the limiter catches what is left
+  const db = p.pre - (S.eq.safe ? Math.max(0, ...p.g) : 0);
+  G.pre.gain.setTargetAtTime(Math.pow(10, db / 20), now, 0.015);
+  G.filters.forEach((f, i) => { f.gain.setTargetAtTime(p.g[i], now, 0.015); f.Q.setTargetAtTime(p.q, now, 0.015); });
   if(!full && sig === G.sig){ if(pOn && G.jungle) G.jungle.setRatio(Math.pow(2, S.fx.pitch / 12)); return; }
   G.sig = sig;
-  for(const n of [G.src, G.last]){ try{ n.disconnect(); }catch(e){} }
+  for(const n of [G.src, G.last, G.lim]){ try{ n.disconnect(); }catch(e){} }
   if(G.jungle){ try{ G.jungle.output.disconnect(); }catch(e){} }
   let head = G.src;
-  if(eOn){ G.src.connect(G.pre); head = G.last; }
+  if(eOn){ G.src.connect(G.pre); head = G.last; if(lOn){ G.last.connect(G.lim); head = G.lim; } }
   if(pOn){
     if(!G.jungle) G.jungle = new Jungle(G.c);
     head.connect(G.jungle.input); G.jungle.output.connect(G.c.destination);
     G.jungle.setRatio(Math.pow(2, S.fx.pitch / 12));
   } else head.connect(G.c.destination);
+  if(aOn) head.connect(G.an);
 }
 function applyFx(){
   const keep = !S.fx.link;
@@ -1528,21 +1609,107 @@ $('#fx').addEventListener('click', e => {
 $('#fxClose').addEventListener('click', () => $('#fx').classList.add('hidden'));
 
 /* ================= Equalizer ================= */
+const EQ_DB = 12;   // the curve and the sliders cover -12 dB .. +12 dB
+const eqX = (f, w) => Math.log(f / 20) / Math.log(20000 / 20) * w;
+function eqFmtDb(v){ return (v > 0 ? '+' : '') + (Math.round(v * 10) / 10); }
 function updEqLabels(){
-  S.eq.g.forEach((g, i) => { const e = $('#eqg' + i); if(e) e.textContent = (g > 0 ? '+' : '') + g; });
+  const p = eqProf();
+  p.g.forEach((g, i) => { const e = $('#eqg' + i); if(e) e.textContent = eqFmtDb(g); const r = $('#eqs' + i); if(r && +r.value !== g) r.value = g; });
+  $('#eqPreV').textContent = eqFmtDb(p.pre) + ' dB'; $('#eqQV').textContent = p.q.toFixed(1);
   $('#btnEq').classList.toggle('on', eqActive());
+  $('#eqPop').classList.toggle('eq-off', !S.eq.on);
+  eqDraw();
 }
 function drawEq(){
-  $('#eqBands').innerHTML = EQ_FREQ.map((f, i) => '<div class="eqb"><span class="g" id="eqg' + i + '"></span><input type="range" min="-12" max="12" step="0.5" data-b="' + i + '" value="' + S.eq.g[i] + '"><span class="f">' + (f >= 1000 ? (f / 1000) + 'k' : f) + ' Hz</span></div>').join('');
-  $('#eqPresets').innerHTML = EQ_PRESETS.map((p, i) => '<button class="chip" data-p="' + i + '">' + p[0] + '</button>').join('');
+  const p = eqProf();
+  $('#eqBands').innerHTML = EQ_FREQ.map((f, i) => '<div class="eqb"><span class="g" id="eqg' + i + '"></span><input type="range" id="eqs' + i + '" min="-12" max="12" step="0.5" data-b="' + i + '" value="' + p.g[i] + '" aria-label="' + EQ_LABEL[i] + ' Hz gain"><span class="f">' + EQ_LABEL[i] + '</span></div>').join('');
+  $('#eqProf').innerHTML = S.eq.prof.map((q, i) => '<button class="eqp' + (i === S.eq.cur ? ' sel' : '') + '" data-p="' + i + '" role="tab" aria-selected="' + (i === S.eq.cur) + '" dir="auto">' + esc(q.name) + '</button>').join('');
+  $('#eqName').value = p.name; $('#eqPre').value = p.pre; $('#eqQ').value = p.q;
+  $('#eqOn').checked = S.eq.on; $('#eqSafe').checked = S.eq.safe; $('#eqSpec').checked = S.eq.spec;
   updEqLabels();
 }
 function eqChanged(){ store.set('mp_eq', S.eq); applyFx(); updEqLabels(); }
-$('#eqBands').addEventListener('input', e => { const b = e.target.dataset.b; if(b == null) return; S.eq.g[+b] = +e.target.value; eqChanged(); });
-$('#eqPresets').addEventListener('click', e => {
+// ---- the curve (and the spectrum behind it) ----
+let eqBins = null;
+function eqDraw(){
+  const cv = $('#eqCv'); if(!cv || $('#eqPop').classList.contains('hidden')) return;
+  const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
+  if(!W || !H) return;
+  if(cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)){ cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+  const cs = getComputedStyle(document.documentElement), acc = cs.getPropertyValue('--accent').trim() || '#7c5cff', txt = cs.getPropertyValue('--text').trim() || '#fff';
+  const yOf = d => H / 2 - d / EQ_DB * (H / 2 - 8), off = !S.eq.on;
+  g.font = '10px system-ui,sans-serif'; g.textBaseline = 'middle';
+  for(const d of [-12, -6, 0, 6, 12]){ g.strokeStyle = d === 0 ? 'rgba(128,128,128,.55)' : 'rgba(128,128,128,.22)'; g.lineWidth = 1; g.beginPath(); g.moveTo(0, yOf(d) + .5); g.lineTo(W, yOf(d) + .5); g.stroke(); }
+  g.fillStyle = 'rgba(128,128,128,.8)'; g.textAlign = 'left'; for(const d of [-12, 0, 12]) g.fillText((d > 0 ? '+' : '') + d, 3, yOf(d) + (d === 12 ? 8 : d === -12 ? -8 : -7));
+  for(const f of EQ_FREQ){ g.strokeStyle = 'rgba(128,128,128,.14)'; g.beginPath(); g.moveTo(eqX(f, W) + .5, 0); g.lineTo(eqX(f, W) + .5, H); g.stroke(); }
+  // spectrum
+  if(S.eq.spec && G && G.an && !audio.paused){
+    if(!eqBins) eqBins = new Uint8Array(G.an.frequencyBinCount);
+    G.an.getByteFrequencyData(eqBins);
+    const hz = G.c.sampleRate / 2 / eqBins.length, n = 64; g.fillStyle = acc; g.globalAlpha = .28;
+    for(let k = 0; k < n; k++){
+      const f0 = 20 * Math.pow(1000, k / n), f1 = 20 * Math.pow(1000, (k + 1) / n);
+      let a = Math.max(0, Math.floor(f0 / hz)), b = Math.max(a + 1, Math.min(eqBins.length, Math.ceil(f1 / hz))), m = 0;
+      for(let j = a; j < b; j++) if(eqBins[j] > m) m = eqBins[j];
+      const x0 = eqX(f0, W), x1 = eqX(f1, W), h = m / 255 * (H - 10);
+      g.fillRect(x0 + .5, H - h, Math.max(1, x1 - x0 - 1), h);
+    }
+    g.globalAlpha = 1;
+  }
+  // curve + nodes
+  const p = eqProf(), xs = [], fr = []; for(let x = 0; x <= W; x += 3){ xs.push(x); fr.push(20 * Math.pow(1000, x / W)); }
+  const db = eqCurve(p, fr), col = off ? 'rgba(128,128,128,.8)' : acc;
+  g.beginPath(); xs.forEach((x, i) => { const y = yOf(Math.max(-EQ_DB - 3, Math.min(EQ_DB + 3, db[i]))); i ? g.lineTo(x, y) : g.moveTo(x, y); });
+  g.lineTo(W, yOf(0)); g.lineTo(0, yOf(0)); g.closePath(); g.fillStyle = col; g.globalAlpha = .16; g.fill(); g.globalAlpha = 1;
+  g.beginPath(); xs.forEach((x, i) => { const y = yOf(Math.max(-EQ_DB - 3, Math.min(EQ_DB + 3, db[i]))); i ? g.lineTo(x, y) : g.moveTo(x, y); });
+  g.strokeStyle = col; g.lineWidth = 2; g.stroke();
+  p.g.forEach((v, i) => { g.beginPath(); g.arc(eqX(EQ_FREQ[i], W), yOf(v), 5, 0, 7); g.fillStyle = i === eqDrag ? txt : col; g.fill(); g.strokeStyle = 'rgba(0,0,0,.5)'; g.lineWidth = 1; g.stroke(); });
+}
+let eqDrag = -1, eqRaf = 0, eqLast = 0;
+function eqLoop(t){
+  eqRaf = 0;
+  if(!eqSpecWanted() || audio.paused || !G) return;
+  if(t - eqLast > 32){ eqLast = t; eqDraw(); }
+  eqRaf = requestAnimationFrame(eqLoop);
+}
+// called whenever the popup opens/closes, playback starts/stops or the spectrum switch changes
+function eqSync(){
+  if(eqSpecWanted() && !G) applyFx();
+  if(ctx) rewire(false);
+  if(eqSpecWanted() && !audio.paused && G && !eqRaf) eqRaf = requestAnimationFrame(eqLoop);
+  eqDraw();
+}
+new MutationObserver(eqSync).observe($('#eqPop'), {attributes: true, attributeFilter: ['class']});
+audio.addEventListener('play', eqSync); audio.addEventListener('pause', eqSync);
+window.addEventListener('resize', eqDraw);
+$('#eqBands').addEventListener('input', e => { const b = e.target.dataset.b; if(b == null) return; eqProf().g[+b] = +e.target.value; eqChanged(); });
+// drag a point of the curve up or down
+(function(){
+  const cv = $('#eqCv'), near = e => { const r = cv.getBoundingClientRect(), x = e.clientX - r.left; let best = 0, bd = 1e9; EQ_FREQ.forEach((f, i) => { const d = Math.abs(eqX(f, r.width) - x); if(d < bd){ bd = d; best = i; } }); return best; };
+  const set = e => { const r = cv.getBoundingClientRect(), d = (r.height / 2 - (e.clientY - r.top)) / (r.height / 2 - 8) * EQ_DB; eqProf().g[eqDrag] = Math.max(-EQ_DB, Math.min(EQ_DB, Math.round(d * 2) / 2)); eqChanged(); };
+  cv.addEventListener('pointerdown', e => { eqDrag = near(e); cv.setPointerCapture(e.pointerId); set(e); });
+  cv.addEventListener('pointermove', e => { if(eqDrag >= 0) set(e); });
+  const end = () => { eqDrag = -1; eqDraw(); };
+  cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
+  cv.addEventListener('dblclick', e => { const i = near(e); eqProf().g[i] = 0; eqChanged(); });
+})();
+$('#eqProf').addEventListener('click', e => {
   const b = e.target.closest('[data-p]'); if(!b) return;
-  S.eq.g = EQ_PRESETS[+b.dataset.p][1].slice(); drawEq(); eqChanged();
+  S.eq.cur = +b.dataset.p; drawEq(); eqChanged();
 });
+$('#eqName').addEventListener('input', () => {
+  const v = $('#eqName').value.trim().slice(0, 20); if(!v) return;
+  eqProf().name = v; const b = $('#eqProf .sel'); if(b) b.textContent = v; store.set('mp_eq', S.eq);
+});
+$('#eqName').addEventListener('blur', () => { $('#eqName').value = eqProf().name; });
+$('#eqPre').addEventListener('input', () => { eqProf().pre = +$('#eqPre').value; eqChanged(); });
+$('#eqQ').addEventListener('input', () => { eqProf().q = +$('#eqQ').value; eqChanged(); });
+$('#eqOn').addEventListener('change', () => { S.eq.on = $('#eqOn').checked; eqChanged(); });
+$('#eqSafe').addEventListener('change', () => { S.eq.safe = $('#eqSafe').checked; eqChanged(); });
+$('#eqSpec').addEventListener('change', () => { S.eq.spec = $('#eqSpec').checked; eqChanged(); eqSync(); });
+$('#eqFlat').addEventListener('click', () => { const p = eqProf(); p.g = p.g.map(() => 0); p.pre = 0; drawEq(); eqChanged(); });
+$('#eqFactory').addEventListener('click', () => { S.eq.prof[S.eq.cur] = eqCleanProfile(EQ_FACTORY[S.eq.cur], S.eq.cur); drawEq(); eqChanged(); toast('Profile ' + (S.eq.cur + 1) + ' is back to its original settings'); });
 
 /* ================= Sleep timer ================= */
 let sleepT = null;
