@@ -388,6 +388,30 @@ select.sel{border-radius:999px;padding:9px 14px;background:color-mix(in srgb,var
   .top{padding:16px 16px 10px}
   .top h1{font-size:24px}
 }
+/* appearance: live preview, toggle, contrast warning, smooth accent change */
+@property --accent{syntax:'<color>';inherits:true;initial-value:#7c5cff}
+:root.cover-theme{transition:--accent .9s ease}
+.thprev{display:grid;grid-template-columns:96px minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:14px;background:var(--bg);font-size:12px;pointer-events:none;user-select:none}
+.tp-side{grid-row:1/3;background:color-mix(in srgb,var(--bg) 70%,#000);border-right:1px solid var(--line);padding:10px 8px;display:flex;flex-direction:column;gap:3px}
+.tp-nav{padding:6px 8px;border-radius:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tp-nav.on{background:var(--accent-soft);color:var(--text);font-weight:600}
+.tp-main{padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.tp-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.tp-head b{font-size:15px}
+.tp-main .btn{padding:4px 10px;font-size:11px}
+.tp-row{display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:9px;color:var(--text)}
+.tp-row.cur{background:var(--accent-soft)}.tp-row.cur b{color:var(--accent2)}
+.tp-row small{display:block;color:var(--muted);font-size:11px}
+.tp-cov{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--accent),var(--accent2));flex:none}
+.tp-bar{grid-column:2;display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--panel);border-top:1px solid var(--line)}
+.tp-play{width:24px;height:24px;border-radius:50%;background:var(--playbtn);flex:none}
+.tp-prog{flex:1;height:4px;border-radius:4px;background:color-mix(in srgb,var(--text) 18%,transparent);overflow:hidden}
+.tp-prog i{display:block;height:100%;width:38%;background:var(--accent)}
+.trow.cvrow{border-bottom:1px solid var(--line);padding:10px 0;margin-bottom:4px;cursor:pointer}
+input.tog{-webkit-appearance:none;appearance:none;flex:none;width:42px;height:24px;border-radius:99px;background:var(--line);position:relative;cursor:pointer;transition:background .15s}
+input.tog::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .15s;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+input.tog:checked{background:var(--accent)}input.tog:checked::after{transform:translateX(18px)}
+.trow .tl small.warn{color:var(--danger);display:flex;gap:6px;align-items:flex-start}
 </style>
 </head>
 <body>
@@ -673,7 +697,7 @@ const eqActive = () => S.eq.g.some(x => Math.abs(x) > 0.05);
    Names, artists, albums, covers, playlists, favorites and settings are saved next to the music folder
    so they come back automatically if the app data is wiped. Each song is keyed by its file path. */
 const BK = {hold:false, ready:false, timer:null, dirty:false, saving:false, covers:new Set(), dirtyCovers:new Set(), clean:false, first:true, last:0, failed:false};
-const BK_KEYS = ['mp_theme', 'mp_fx', 'mp_sort', 'mp_vol', 'mp_shuffle', 'mp_repeat', 'mp_eq'];
+const BK_KEYS = ['mp_theme', 'mp_themecover', 'mp_fx', 'mp_sort', 'mp_vol', 'mp_shuffle', 'mp_repeat', 'mp_eq'];
 function hash32(s, seed){ let h = seed >>> 0; for(let i = 0; i < s.length; i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h.toString(16).padStart(8, '0'); }
 const coverName = rel => hash32(rel, 2166136261) + hash32(rel, 0x9e3779b1) + '.jpg';
 const libPath = () => dataPath('library.json');
@@ -1201,7 +1225,7 @@ function updateNowPlaying(){
   $('#npCover').innerHTML = coverHtml(t);
   hydrateCovers($('#npCover'));
   syncNpFav();
-  remPush(); remCover();
+  remPush(); remCover(); coverTheme();
   $('#npTitle').textContent = t ? t.title : 'Nothing selected';
   $('#npArtist').textContent = t ? ([t.artist, t.album].filter(Boolean).join(' · ') || '—') : 'Pick a song to play';
   document.title = t && S.playing ? t.title + ' — My Music Player' : 'My Music Player';
@@ -3113,7 +3137,12 @@ const THEMES = [
   {name:'Fire orange', v:{accent:'#ff7a2f', bg:'#140e0b', panel:'#211611', text:'#f6ebe3', play:'#ffffff'}},
   {name:'Pink', v:{accent:'#ff4d9d', bg:'#140b11', panel:'#211119', text:'#f8e8f0', play:'#ffffff'}},
   {name:'Pure black', v:{accent:'#e5e5e5', bg:'#000000', panel:'#0d0d0d', text:'#f2f2f2', play:'#e5e5e5'}},
-  {name:'Light', v:{accent:'#6a4cff', bg:'#f3f4f8', panel:'#ffffff', text:'#1b1e27', play:'#1b1e27'}}
+  {name:'Light', v:{accent:'#6a4cff', bg:'#f3f4f8', panel:'#ffffff', text:'#1b1e27', play:'#1b1e27'}},
+  {name:'Midnight', v:{accent:'#8ab4ff', bg:'#070b16', panel:'#0e1526', text:'#dfe7fb', play:'#ffffff'}},
+  {name:'Sunset', v:{accent:'#ff6a5c', bg:'#16090d', panel:'#251116', text:'#fbe9e4', play:'#ffffff'}},
+  {name:'Graphite', v:{accent:'#9aa4b2', bg:'#121315', panel:'#1b1d20', text:'#e8eaed', play:'#e8eaed'}},
+  {name:'Mint', v:{accent:'#3fe0c5', bg:'#081416', panel:'#0f2023', text:'#e2f6f4', play:'#ffffff'}},
+  {name:'Warm light', v:{accent:'#d9622b', bg:'#faf4ec', panel:'#fffaf3', text:'#2b211a', play:'#2b211a'}}
 ];
 const HEX_RE = /^#[0-9a-f]{6}$/i;
 // accepts "#7c5cff", "7c5cff", "#7cf", "7cf" (any case, spaces around); returns "#rrggbb" or null
@@ -3128,6 +3157,9 @@ function loadTheme(){
   return t;
 }
 let theme = loadTheme();
+// "Match the cover": the accent follows the cover of the playing song (falls back to theme.accent)
+let COVERTHEME = !!store.get('mp_themecover', false), coverAcc = null;
+document.documentElement.classList.toggle('cover-theme', COVERTHEME);
 function lum(h){
   const c = [1, 3, 5].map(i => { const v = parseInt(h.slice(i, i + 2), 16) / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
   return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
@@ -3135,15 +3167,81 @@ function lum(h){
 const onColor = h => lum(h) > 0.179 ? '#111111' : '#ffffff';
 function applyTheme(){
   const st = document.documentElement.style;
-  st.setProperty('--accent', theme.accent); st.setProperty('--bg', theme.bg); st.setProperty('--panel', theme.panel);
+  const acc = (COVERTHEME && coverAcc) || theme.accent;
+  st.setProperty('--accent', acc); st.setProperty('--bg', theme.bg); st.setProperty('--panel', theme.panel);
   st.setProperty('--text', theme.text); st.setProperty('--playbtn', theme.play);
-  st.setProperty('--on-accent', onColor(theme.accent)); st.setProperty('--on-play', onColor(theme.play));
+  st.setProperty('--on-accent', onColor(acc)); st.setProperty('--on-play', onColor(theme.play));
   st.colorScheme = lum(theme.bg) > 0.4 ? 'light' : 'dark';
 }
 applyTheme();
+const contrast = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+function rgb2hsl(r, g, b){
+  r /= 255; g /= 255; b /= 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn, l = (mx + mn) / 2;
+  let h = 0, s = 0;
+  if(d){
+    s = d / (1 - Math.abs(2 * l - 1));
+    h = mx === r ? ((g - b) / d + 6) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h *= 60;
+  }
+  return [h, s, l];
+}
+function hsl2hex(h, s, l){
+  const f = n => { const k = (n + h / 30) % 12, a = s * Math.min(l, 1 - l); const v = l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)); return Math.round(v * 255).toString(16).padStart(2, '0'); };
+  return '#' + f(0) + f(8) + f(4);
+}
+// the main color of a cover: the strongest saturated hue; null for gray covers
+const CT_CACHE = new Map();
+async function coverRaw(id){
+  if(CT_CACHE.has(id)) return CT_CACHE.get(id);
+  const url = await ensureCover(id); if(!url) return null;
+  let raw = null;
+  try{
+    const img = new Image(); img.src = url; await img.decode();
+    const c = document.createElement('canvas'); c.width = c.height = 24;
+    const g = c.getContext('2d', {willReadFrequently: true}); g.drawImage(img, 0, 0, 24, 24);
+    const px = g.getImageData(0, 0, 24, 24).data, bins = Array.from({length: 12}, () => ({w: 0, r: 0, g: 0, b: 0}));
+    for(let i = 0; i < px.length; i += 4){
+      const [h, s, l] = rgb2hsl(px[i], px[i + 1], px[i + 2]);
+      if(s < 0.25 || l < 0.12 || l > 0.92) continue;
+      const w = s * (1 - Math.abs(2 * l - 1)), b = bins[Math.floor(h / 30) % 12];
+      b.w += w; b.r += px[i] * w; b.g += px[i + 1] * w; b.b += px[i + 2] * w;
+    }
+    const best = bins.reduce((a, b) => b.w > a.w ? b : a);
+    if(best.w > 0.8) raw = rgb2hsl(best.r / best.w, best.g / best.w, best.b / best.w);
+  }catch(e){}
+  if(CT_CACHE.size > 200) CT_CACHE.clear();
+  CT_CACHE.set(id, raw);
+  return raw;
+}
+// brings the color to a clear, pleasant strength and keeps it visible on the background
+function coverAccentHex(raw){
+  if(!raw) return null;
+  let [h, s, l] = raw; s = Math.min(0.85, Math.max(0.55, s));
+  const dark = lum(theme.bg) < 0.4; l = dark ? Math.max(l, 0.55) : Math.min(l, 0.45);
+  for(let i = 0; i < 12 && contrast(hsl2hex(h, s, l), theme.bg) < 3; i++) l += dark ? 0.04 : -0.04;
+  return hsl2hex(h, s, Math.min(0.9, Math.max(0.1, l)));
+}
+let CT_TOKEN = 0;
+async function coverTheme(){
+  const tok = ++CT_TOKEN;
+  if(!COVERTHEME){ if(coverAcc){ coverAcc = null; applyTheme(); } return; }
+  const raw = S.curId == null ? null : await coverRaw(S.curId);
+  if(tok !== CT_TOKEN) return;
+  const hex = coverAccentHex(raw);
+  if(hex !== coverAcc){ coverAcc = hex; applyTheme(); }
+}
 function openTheme(){
   const same = v => THEME_KEYS.every(([k]) => theme[k].toLowerCase() === v[k].toLowerCase());
-  openModal('<h3>Appearance</h3><div class="presets" id="thPresets"></div><div id="thRows"></div>' +
+  openModal('<h3>Appearance</h3>' +
+    '<div class="thprev" aria-hidden="true"><div class="tp-side"><div class="tp-nav on">All songs</div><div class="tp-nav">Favorites</div><div class="tp-nav">Playlists</div></div>' +
+    '<div class="tp-main"><div class="tp-head"><b>All songs</b><span class="btn primary">Add songs</span></div>' +
+    '<div class="tp-row cur"><span class="tp-cov"></span><div><b>Now playing</b><small>Artist</small></div></div>' +
+    '<div class="tp-row"><span class="tp-cov" style="opacity:.55"></span><div><b>Another song</b><small>Artist</small></div></div></div>' +
+    '<div class="tp-bar"><span class="tp-play"></span><div class="tp-prog"><i></i></div></div></div>' +
+    '<div class="presets" id="thPresets"></div>' +
+    '<label class="trow cvrow"><div class="tl">Match the cover<small>The accent color follows the cover of the song that is playing</small></div><input type="checkbox" class="tog" id="thCover" role="switch"' + (COVERTHEME ? ' checked' : '') + '></label>' +
+    '<div id="thRows"></div>' +
     '<div class="actions"><button class="btn primary" data-close>Done</button><button class="btn" id="thReset">Reset to default</button></div>',
     m => {
       const drawPresets = () => {
@@ -3153,8 +3251,22 @@ function openTheme(){
       const drawRows = () => {
         m.querySelector('#thRows').innerHTML = THEME_KEYS.map(([k, n, d]) =>
           '<div class="trow"><div class="tl">' + n + '<small>' + d + '</small></div><input type="text" class="hex" data-h="' + k + '" value="' + theme[k] + '" maxlength="7" spellcheck="false" autocomplete="off" dir="ltr" aria-label="' + n + ' hex code" title="Hex color, for example #7c5cff"><input type="color" data-k="' + k + '" value="' + theme[k] + '" aria-label="' + n + ' picker"></div>').join('');
+        drawWarn();
       };
-      const commit = () => { applyTheme(); store.set('mp_theme', theme); };
+      // readability hints: shown under the row that causes the problem
+      const drawWarn = () => {
+        const msg = {
+          text: contrast(theme.text, theme.bg) < 4.5 || contrast(theme.text, theme.panel) < 4.5 ? 'Low contrast: the text may be hard to read on this background.' : '',
+          accent: contrast(theme.accent, theme.bg) < 3 ? 'The accent is hard to see on this background.' : ''
+        };
+        m.querySelectorAll('#thRows .trow').forEach(row => {
+          const k = row.querySelector('.hex').dataset.h, tl = row.querySelector('.tl');
+          let w = tl.querySelector('.warn');
+          if(msg[k]){ if(!w){ w = document.createElement('small'); w.className = 'warn'; w.setAttribute('role', 'status'); tl.appendChild(w); } w.textContent = '⚠ ' + msg[k]; }
+          else if(w) w.remove();
+        });
+      };
+      const commit = () => { applyTheme(); store.set('mp_theme', theme); coverTheme(); drawWarn(); };
       drawPresets(); drawRows();
       m.querySelector('#thPresets').addEventListener('click', e => {
         const b = e.target.closest('.preset'); if(!b) return;
@@ -3184,7 +3296,14 @@ function openTheme(){
         if(e.key === 'Enter'){ e.preventDefault(); e.target.blur(); }
         else if(e.key === 'Escape' && (e.target.value !== theme[e.target.dataset.h] || e.target.classList.contains('bad'))){ settleHex(e.target); e.stopPropagation(); }   // first Esc undoes the edit, the next closes
       });
-      m.querySelector('#thReset').onclick = () => { theme = Object.assign({}, THEMES[0].v); commit(); drawPresets(); drawRows(); };
+      m.querySelector('#thCover').onchange = e => {
+        COVERTHEME = e.target.checked; store.set('mp_themecover', COVERTHEME);
+        document.documentElement.classList.toggle('cover-theme', COVERTHEME); coverTheme();
+      };
+      m.querySelector('#thReset').onclick = () => {
+        theme = Object.assign({}, THEMES[0].v); COVERTHEME = false; store.set('mp_themecover', false); m.querySelector('#thCover').checked = false;
+        document.documentElement.classList.remove('cover-theme'); commit(); drawPresets(); drawRows();
+      };
     });
 }
 
