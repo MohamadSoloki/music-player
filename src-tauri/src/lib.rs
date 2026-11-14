@@ -5,6 +5,7 @@ use tauri::{Emitter, Manager};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_fs::FsExt;
 
+mod discord;
 mod musicdir;
 mod remote;
 #[cfg(windows)]
@@ -299,6 +300,21 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
     Ok(())
 }
 
+// ---------- Discord Rich Presence (see discord.rs) ----------
+struct DiscordState(discord::Presence);
+
+/// The page says what is playing (`activity`, or nothing to clear it); an empty `client_id` switches the presence off.
+#[tauri::command]
+fn discord_set(state: tauri::State<DiscordState>, client_id: String, activity: Option<discord::Activity>) {
+    state.0.set(client_id.trim().to_string(), activity);
+}
+
+/// "off", "connected", "no_discord" or "bad_id" (for the Discord dialog).
+#[tauri::command]
+fn discord_status(state: tauri::State<DiscordState>) -> String {
+    state.0.status().to_string()
+}
+
 /// The page tells whether music is playing (the taskbar thumbnail button shows Pause or Play).
 #[tauri::command]
 fn thumb_state(playing: bool) {
@@ -342,6 +358,8 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         // Phone remote server state
         .manage(RemoteState::default())
+        // Discord Rich Presence: Discord allows about 5 updates per 20 s, so changes are spaced 4 s apart
+        .manage(DiscordState(discord::Presence::start(discord::system_connector(), Duration::from_secs(4), Duration::from_secs(10))))
         .setup(|app| {
             // Music folder: the one saved in settings.json, else the default one.
             let handle = app.handle().clone();
@@ -379,6 +397,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             quit_app,
             thumb_state,
+            discord_set,
+            discord_status,
             move_to_trash,
             music_dir_info,
             pick_music_folder,

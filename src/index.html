@@ -460,6 +460,18 @@ input.tog:checked{background:var(--accent)}input.tog:checked::after{transform:tr
 .fxsave .chip{white-space:nowrap;flex:none;border-radius:10px}
 .fxsave .inp{min-width:0;flex:1}
 #fx .linkrow{margin-top:12px}
+
+/* ---- Discord status dialog ---- */
+.dc-status{margin:8px 0 2px;font-size:12px;color:var(--muted);min-height:18px}
+.dc-status.ok{color:var(--ok,#35d07f)}
+.dc-help{margin:10px 0;font-size:12px;color:var(--muted)}
+.dc-help summary{cursor:pointer;color:var(--accent2)}
+.dc-help ol{margin:8px 0 0;padding-inline-start:20px;line-height:1.8}
+.dc-prev{display:grid;gap:2px;margin:12px 0 0;padding:12px 14px;border-radius:12px;background:var(--panel2);border:1px solid var(--line)}
+.dc-prev small{color:var(--muted);font-size:11px}
+.dc-prev span{color:var(--muted);font-size:12px}
+.dc-bar{height:4px;border-radius:4px;background:var(--line);margin-top:8px;overflow:hidden}
+.dc-bar i{display:block;width:38%;height:100%;background:var(--accent)}
 </style>
 </head>
 <body>
@@ -477,6 +489,7 @@ input.tog:checked{background:var(--accent)}input.tog:checked::after{transform:tr
     <button class="nav-item" id="btnStats"><span data-icon="trend"></span><span class="nm">Listening stats</span></button>
     <button class="nav-item hidden" id="btnBackup"><span data-icon="shield"></span><span class="nm">Backup</span></button>
     <button class="nav-item hidden" id="btnRemote"><span data-icon="phone"></span><span class="nm">Phone remote</span></button>
+    <button class="nav-item hidden" id="btnDiscord"><span data-icon="headphones"></span><span class="nm">Discord status</span></button>
     <button class="nav-item" id="btnTheme"><span data-icon="palette"></span><span class="nm">Appearance</span></button>
     <div class="side-foot" id="storageInfo"></div>
     <div class="app-info hidden" id="appInfo"><span>Version <b id="appVer" dir="ltr">—</b></span><button class="btn sm" id="btnChkUpd">Check for updates</button></div>
@@ -657,6 +670,7 @@ const ICONS = {
   up:'<polyline points="18 15 12 9 6 15"/>',
   down:'<polyline points="6 9 12 15 18 9"/>',
   shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+  headphones:'<path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>',
   next1:'<polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/>',
   vol:'<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>',
   mute:'<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>',
@@ -813,7 +827,7 @@ function eqCurve(p, freqs){
    Names, artists, albums, covers, playlists, favorites and settings are saved next to the music folder
    so they come back automatically if the app data is wiped. Each song is keyed by its file path. */
 const BK = {hold:false, ready:false, timer:null, dirty:false, saving:false, covers:new Set(), dirtyCovers:new Set(), clean:false, first:true, last:0, failed:false};
-const BK_KEYS = ['mp_theme', 'mp_themecover', 'mp_fx', 'mp_fxsong', 'mp_fxpre', 'mp_sort', 'mp_vol', 'mp_shuffle', 'mp_repeat', 'mp_eq'];
+const BK_KEYS = ['mp_theme', 'mp_themecover', 'mp_fx', 'mp_fxsong', 'mp_fxpre', 'mp_discord', 'mp_sort', 'mp_vol', 'mp_shuffle', 'mp_repeat', 'mp_eq'];
 function hash32(s, seed){ let h = seed >>> 0; for(let i = 0; i < s.length; i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h.toString(16).padStart(8, '0'); }
 const coverName = rel => hash32(rel, 2166136261) + hash32(rel, 0x9e3779b1) + '.jpg';
 const libPath = () => dataPath('library.json');
@@ -2060,6 +2074,7 @@ function reloadSettings(){
   S.sort = store.get('mp_sort', 'new'); $('#sortSel').value = S.sort;
   S.shuffle = store.get('mp_shuffle', false); S.repeat = store.get('mp_repeat', 0);
   S.fx = fxNorm(store.get('mp_fx', {})); S.fxSong = false; FXS = fxSongsLoad(); FXP = fxPresetsLoad(); if(S.curId != null) fxForSong(S.curId);
+  DISC = discNorm(store.get('mp_discord', {})); discordSync(true);
   S.eq = loadEq();
   theme = loadTheme(); applyTheme();
   const v = store.get('mp_vol', 0.8); audio.volume = v; volEl.value = v; fillRange(volEl);
@@ -3133,6 +3148,72 @@ function openStats(){
 }
 $('#btnStats').addEventListener('click', openStats);
 
+/* ================= Discord Rich Presence (Windows app) =================
+   Shows "Listening to ..." with title, artist, album and a time bar, like Spotify. The Rust side (discord.rs) talks to
+   the Discord desktop app; here we only decide what to show. Off by default; needs the owner's own Application ID. */
+var DISC = discNorm(store.get('mp_discord', {}));
+var discT = 0, discLast = {key: '|'};
+function discNorm(o){ o = o || {}; return {on: o.on === true, id: String(o.id || '').replace(/\s+/g, '').slice(0, 25)}; }
+const discValid = () => /^\d{15,25}$/.test(DISC.id);
+function discordSync(now){
+  clearTimeout(discT);
+  if(IS_APP) discT = setTimeout(discordSend, now ? 0 : 700);
+}
+function discordSend(){
+  if(!IS_APP) return;
+  const id = DISC.on && discValid() ? DISC.id : '';
+  const t = S.tracks.get(S.curId);
+  let act = null;
+  if(id && t && !audio.paused && !audio.ended){
+    const rate = audio.playbackRate || 1, cur = audio.currentTime || 0, d = curDur(), now = Date.now() / 1000;
+    act = {title: t.title || 'Unknown title', artist: t.artist || '', album: t.album || '', start: Math.round(now - cur / rate), end: d > 0 ? Math.round(now + (d - cur) / rate) : null};
+  }
+  const key = id + '|' + (act ? [act.title, act.artist, act.album].join('\u0001') : '');
+  // the same song and time bar (give or take a second) is already shown
+  if(discLast.key === key && (!act || (Math.abs(act.start - discLast.start) <= 1.5 && Math.abs((act.end || 0) - (discLast.end || 0)) <= 1.5))) return;
+  discLast = {key, start: act && act.start, end: act && act.end};
+  try{ Promise.resolve(TAURI.core.invoke('discord_set', {clientId: id, activity: act})).catch(() => {}); }catch(e){}
+}
+for(const ev of ['playing', 'pause', 'seeked', 'ratechange', 'ended']) audio.addEventListener(ev, () => discordSync());
+
+const DISC_MSG = {
+  connected: 'Connected to Discord.',
+  no_discord: 'Discord is not running on this computer. It connects by itself when you start Discord.',
+  bad_id: 'Discord does not accept this Application ID.'
+};
+function openDiscord(){
+  let timer = 0;
+  const t = S.tracks.get(S.curId);
+  openModal('<h3>Discord status</h3>' +
+    '<p class="muted small" style="margin:0 0 10px">Shows the song you are playing on your Discord profile, like Spotify: title, artist, album and a time bar. It disappears when you pause.</p>' +
+    '<label class="trow"><div class="tl">Show what I\'m listening to<small>Works with the Discord desktop app on this computer</small></div><input type="checkbox" class="tog" id="dcOn" role="switch"></label>' +
+    '<div class="muted small" style="margin:12px 0 4px">Application ID</div>' +
+    '<input class="inp" id="dcId" inputmode="numeric" maxlength="25" autocomplete="off" spellcheck="false" placeholder="A long number, for example 123456789012345678" style="direction:ltr">' +
+    '<div class="dc-status" id="dcStatus" role="status"></div>' +
+    '<details class="dc-help"><summary>How do I get an Application ID?</summary><ol>' +
+    '<li>Open <b>discord.com/developers/applications</b> in your browser and press <b>New Application</b>.</li>' +
+    '<li>Give it a name. This name appears after “Listening to” on your profile.</li>' +
+    '<li>On the <b>General Information</b> page copy the <b>Application ID</b> and paste it above.</li>' +
+    '<li>Optional: under <b>Rich Presence › Art Assets</b> upload a picture and name it <b>icon</b>. It is shown as the cover.</li></ol></details>' +
+    '<div class="dc-prev" aria-hidden="true"><small>Listening to <i>your application name</i></small><b dir="auto">' + esc(t ? t.title : 'Song title') + '</b><span dir="auto">' + esc(t && t.artist ? t.artist : 'Artist') + '</span><span dir="auto">' + esc(t && t.album ? t.album : 'Album') + '</span><div class="dc-bar"><i></i></div></div>' +
+    '<div class="actions"><button class="btn primary" data-close>Done</button></div>',
+    m => {
+      const on = m.querySelector('#dcOn'), idEl = m.querySelector('#dcId'), st = m.querySelector('#dcStatus');
+      on.checked = DISC.on; idEl.value = DISC.id;
+      const refresh = async () => {
+        let s = 'off';
+        try{ s = await TAURI.core.invoke('discord_status'); }catch(e){}
+        const msg = !DISC.on ? 'Off.' : !DISC.id ? 'Enter your Application ID to connect.' : !discValid() ? 'The Application ID is a long number (about 18 digits).' : (DISC_MSG[s] || 'Connecting…');
+        st.textContent = msg; st.classList.toggle('ok', DISC.on && discValid() && s === 'connected');
+      };
+      const save = () => { store.set('mp_discord', DISC); discordSync(true); setTimeout(refresh, 700); refresh(); };
+      on.addEventListener('change', () => { DISC.on = on.checked; save(); });
+      idEl.addEventListener('change', () => { DISC = discNorm({on: DISC.on, id: idEl.value}); idEl.value = DISC.id; save(); });
+      refresh(); timer = setInterval(refresh, 2000);
+    }, () => clearInterval(timer));
+}
+$('#btnDiscord').addEventListener('click', openDiscord);
+
 /* ================= events ================= */
 document.addEventListener('click', e => {
   const nav = e.target.closest('#side .nav-item[data-view]');
@@ -3848,7 +3929,8 @@ $('#btnRemote').addEventListener('click', openRemote);
       FOLDER = true;
       DATA_DIR = APP_DIR + SEP + 'data';
       try{ await FS.mkdir(DATA_DIR + SEP + 'covers', {recursive: true}); }catch(e){ console.warn('data dir', e); }
-      $('#btnBackup').classList.remove('hidden'); $('#btnLyrics').classList.remove('hidden'); $('#btnRemote').classList.remove('hidden');
+      $('#btnBackup').classList.remove('hidden'); $('#btnLyrics').classList.remove('hidden'); $('#btnRemote').classList.remove('hidden'); $('#btnDiscord').classList.remove('hidden');
+      discordSync();
     }catch(e){ console.error(e); toast('Couldn\'t create the music folder: ' + ((e && e.message) || e), false, 9000); }
   }
   drawFolderBar();
