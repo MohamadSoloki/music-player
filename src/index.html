@@ -152,6 +152,7 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
 .chip:hover{border-color:var(--accent2)}
 .linkrow{display:flex;gap:10px;align-items:flex-start;padding:10px;border-radius:10px;background:var(--panel2);cursor:pointer;line-height:1.7}
 .linkrow input{margin-top:5px}
+.linkrow input.tog{margin-top:0}
 .hint{color:var(--muted);font-size:12px;line-height:1.8;margin-top:10px}
 
 /* ---- popups: eq, sleep ---- */
@@ -270,7 +271,6 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
 #toast{position:fixed;bottom:104px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--panel2);border:1px solid var(--line);max-width:min(92vw,720px);line-height:1.7;padding:10px 18px;border-radius:12px;opacity:0;pointer-events:none;transition:.2s;z-index:200}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-@media (max-width:1100px){ .fxbtn:not(.on) #fxLabel{display:none} }
 @media (max-width:860px){
   #app{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr) auto}
   #side{flex-direction:row;align-items:center;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);padding:8px}
@@ -366,6 +366,10 @@ select.sel{border-radius:999px;padding:9px 14px;background:color-mix(in srgb,var
 .ib.play:hover{transform:scale(1.08)}
 .ib.on{color:var(--accent2);background:var(--accent-soft)}
 .fxbtn{border-radius:999px}
+/* icon only like the other buttons; the speed and pitch text shows only while they are changed */
+#fxLabel:empty{display:none}
+.fxbtn:not(.on){width:34px;height:34px;padding:0;justify-content:center;border-color:transparent;background:transparent;color:var(--muted);border-radius:50%}
+.fxbtn:not(.on):hover{color:var(--text);background:var(--panel2)}
 
 /* sliders: thin rounded bar with accent fill */
 #seek,.right input[type=range]{-webkit-appearance:none;appearance:none;height:5px;border-radius:5px;outline:0;
@@ -430,6 +434,32 @@ input.tog:checked{background:var(--accent)}input.tog:checked::after{transform:tr
 .eqopts small{display:block;color:var(--muted);font-size:11px;line-height:1.5;margin-top:1px}
 .eq-off .eqbands,.eq-off .eqrow,.eq-off .eqcv{opacity:.45}
 @media (max-width:700px){.eqrow,.eqopts{grid-template-columns:1fr}}
+
+/* ---- speed and pitch panel ---- */
+#fx{width:400px;max-height:calc(100vh - 130px);overflow:auto}
+#fx h4 .fxhb{display:flex;align-items:center;gap:8px}
+#fx .chips{margin-bottom:12px}
+#fx .chip.on{border-color:var(--accent);color:var(--accent2)}
+#fx .chip.sel{box-shadow:0 0 0 1px var(--accent2) inset}
+.fxval{display:flex;align-items:center;gap:6px;direction:ltr}
+.fxval b{color:var(--muted);font-weight:600;font-size:12px}
+.inp.fxnum{width:74px;padding:5px 8px;text-align:right;font-weight:700;color:var(--accent2)}
+.fxsl{display:flex;align-items:center;gap:8px}
+.fxsl input[type=range]{flex:1}
+.chip.st{width:28px;height:28px;padding:0;display:grid;place-items:center;font-size:15px;flex:none}
+.fxgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0 0}
+.fxgrid .fxrow{margin:0}
+.fxgrid select.inp{padding:7px 10px}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{flex:1;padding:7px 4px;font-size:12px;background:var(--panel2)}
+.seg button.on{background:var(--accent);color:#fff}
+.fxslots{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-bottom:8px}
+.fxslots .chip{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:5px 6px;text-align:center}
+.fxsave{display:flex;gap:6px}
+.fxsave .inp{padding:6px 10px}
+.fxsave .chip{white-space:nowrap;flex:none;border-radius:10px}
+.fxsave .inp{min-width:0;flex:1}
+#fx .linkrow{margin-top:12px}
 </style>
 </head>
 <body>
@@ -508,7 +538,7 @@ input.tog:checked{background:var(--accent)}input.tog:checked::after{transform:tr
       <div class="seek"><span id="tCur">0:00</span><input type="range" id="seek" min="0" max="1000" value="0"><span id="tDur">0:00</span></div>
     </div>
     <div class="right">
-      <button class="fxbtn" id="btnFx"><span data-icon="sliders"></span><span id="fxLabel">Speed and pitch</span></button>
+      <button class="fxbtn" id="btnFx" title="Speed and pitch"><span data-icon="sliders"></span><span id="fxLabel"></span></button>
       <button class="ib sm" id="btnEq" title="Equalizer" data-icon="eq"></button>
       <button class="ib sm" id="btnSleep" title="Sleep timer"><span data-icon="moon"></span><span class="tbadge hidden" id="sleepBadge"></span></button>
       <button class="ib sm hidden" id="btnLyrics" title="Lyrics" data-icon="lyrics"></button>
@@ -538,36 +568,48 @@ input.tog:checked{background:var(--accent)}input.tog:checked::after{transform:tr
       <div class="hint">The volume fades out over the last few seconds, then playback stops.</div>
     </div>
     <div id="fx" class="hidden">
-      <h4><span>Speed and pitch</span><button class="ib" id="fxClose" data-icon="x" style="width:30px;height:30px"></button></h4>
+      <h4><span>Speed and pitch</span><span class="fxhb"><button class="chip" id="fxReset" title="Back to normal speed and pitch">Reset</button><button class="ib" id="fxClose" data-icon="x" style="width:30px;height:30px"></button></span></h4>
+      <div class="chips" id="fxBuilt">
+        <button class="chip" data-preset="original">Original</button>
+        <button class="chip" data-preset="slowed">Slowed</button>
+        <button class="chip" data-preset="nightcore">Nightcore</button>
+        <button class="chip" data-preset="chipmunk">Chipmunk</button>
+        <button class="chip" data-preset="deep">Deep voice</button>
+        <button class="chip" data-preset="hz432">432 Hz</button>
+      </div>
       <div class="fxrow">
-        <div class="lab"><span>Playback speed</span><span class="val" id="vSpeed">1.00×</span></div>
-        <input type="range" id="fxSpeed" min="0.5" max="2" step="0.05" value="1">
+        <div class="lab"><span>Playback speed</span><span class="fxval"><input type="number" class="inp fxnum" id="fxSpeedN" min="0.25" max="4" step="0.01" aria-label="Speed"><b>×</b></span></div>
+        <div class="fxsl"><button class="chip st" data-sd="-0.05" aria-label="Slower">−</button><input type="range" id="fxSpeed" min="-2" max="2" step="0.005" value="0"><button class="chip st" data-sd="0.05" aria-label="Faster">+</button></div>
         <div class="chips" style="margin-top:8px">
-          <button class="chip" data-speed="0.75">0.75×</button>
-          <button class="chip" data-speed="1">1×</button>
-          <button class="chip" data-speed="1.25">1.25×</button>
-          <button class="chip" data-speed="1.5">1.5×</button>
+          <button class="chip" data-speed="0.5">0.5×</button><button class="chip" data-speed="0.75">0.75×</button><button class="chip" data-speed="1">1×</button>
+          <button class="chip" data-speed="1.25">1.25×</button><button class="chip" data-speed="1.5">1.5×</button><button class="chip" data-speed="2">2×</button>
         </div>
       </div>
       <div class="fxrow">
-        <div class="lab"><span>Pitch</span><span class="val" id="vPitch">0</span></div>
-        <input type="range" id="fxPitch" min="-12" max="12" step="0.5" value="0">
+        <div class="lab"><span>Pitch</span><span class="fxval"><input type="number" class="inp fxnum" id="fxPitchN" min="-12" max="12" step="0.1" aria-label="Pitch in semitones"><b>st</b></span></div>
+        <div class="fxsl"><button class="chip st" data-pd="-0.1" aria-label="Lower">−</button><input type="range" id="fxPitch" min="-12" max="12" step="0.1" value="0"><button class="chip st" data-pd="0.1" aria-label="Higher">+</button></div>
         <div class="chips" style="margin-top:8px">
-          <button class="chip" data-pitch="-2">−2</button>
-          <button class="chip" data-pitch="-1">−1</button>
-          <button class="chip" data-pitch="0">0</button>
-          <button class="chip" data-pitch="1">+1</button>
-          <button class="chip" data-pitch="2">+2</button>
+          <button class="chip" data-pitch="-5">−5</button><button class="chip" data-pitch="-2">−2</button><button class="chip" data-pitch="-1">−1</button><button class="chip" data-pitch="0">0</button>
+          <button class="chip" data-pitch="1">+1</button><button class="chip" data-pitch="2">+2</button><button class="chip" data-pitch="5">+5</button>
         </div>
       </div>
       <label class="linkrow">
         <input type="checkbox" id="fxLink">
         <span><b>Change pitch together with speed</b><br><span class="muted small">Like a vinyl record: faster = higher voice (nightcore), slower = deeper voice (slowed).</span></span>
       </label>
-      <div class="chips" style="margin-top:12px">
-        <button class="chip" data-preset="original">Original</button>
-        <button class="chip" data-preset="slowed">Slowed</button>
-        <button class="chip" data-preset="nightcore">Nightcore</button>
+      <div class="fxgrid">
+        <div class="fxrow"><div class="lab"><span>Tuning</span></div><select class="inp" id="fxTune" aria-label="Reference tuning"></select></div>
+        <div class="fxrow"><div class="lab"><span>Pitch quality</span></div>
+          <div class="seg" id="fxQ"><button data-q="0">Fast</button><button data-q="1">Balanced</button><button data-q="2">Smooth</button></div></div>
+      </div>
+      <label class="linkrow">
+        <input type="checkbox" class="tog" id="fxSongOn">
+        <span><b>Remember for this song</b><br><span class="muted small" id="fxSongNote">Only this song uses these settings. Other songs keep the normal ones.</span></span>
+      </label>
+      <div class="fxrow" style="margin-top:14px">
+        <div class="lab"><span>My presets</span></div>
+        <div class="fxslots" id="fxMine"></div>
+        <div class="fxsave"><input class="inp" id="fxMName" dir="auto" maxlength="16" placeholder="Preset name" aria-label="Preset name"><button class="chip" id="fxMSave">Save here</button><button class="chip" id="fxMClear">Clear</button></div>
       </div>
       <div class="hint" id="fxNote"></div>
     </div>
@@ -771,7 +813,7 @@ function eqCurve(p, freqs){
    Names, artists, albums, covers, playlists, favorites and settings are saved next to the music folder
    so they come back automatically if the app data is wiped. Each song is keyed by its file path. */
 const BK = {hold:false, ready:false, timer:null, dirty:false, saving:false, covers:new Set(), dirtyCovers:new Set(), clean:false, first:true, last:0, failed:false};
-const BK_KEYS = ['mp_theme', 'mp_themecover', 'mp_fx', 'mp_sort', 'mp_vol', 'mp_shuffle', 'mp_repeat', 'mp_eq'];
+const BK_KEYS = ['mp_theme', 'mp_themecover', 'mp_fx', 'mp_fxsong', 'mp_fxpre', 'mp_sort', 'mp_vol', 'mp_shuffle', 'mp_repeat', 'mp_eq'];
 function hash32(s, seed){ let h = seed >>> 0; for(let i = 0; i < s.length; i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h.toString(16).padStart(8, '0'); }
 const coverName = rel => hash32(rel, 2166136261) + hash32(rel, 0x9e3779b1) + '.jpg';
 const libPath = () => dataPath('library.json');
@@ -922,15 +964,42 @@ function openBackup(){
     });
 }
 
+/* ================= speed and pitch: settings model =================
+   speed 0.25-4, pitch -12..+12 semitones, link (pitch follows speed), tune (cents, reference tuning such as A = 432 Hz),
+   q (pitch shifter quality: 0 fast, 1 balanced, 2 smooth). */
+const fxNorm = o => { o = o || {}; return {speed: Math.round(eqNum(o.speed, 0.25, 4, 1) * 100) / 100, pitch: Math.round(eqNum(o.pitch, -12, 12, 0) * 10) / 10, link: !!o.link, tune: Math.round(eqNum(o.tune, -100, 100, 0) * 100) / 100, q: o.q === 0 || o.q === 2 ? o.q : 1}; };
+const FX_PRESETS = {
+  original: {speed:1, pitch:0, link:false}, slowed: {speed:0.85, pitch:0, link:true}, nightcore: {speed:1.25, pitch:0, link:true},
+  chipmunk: {speed:1, pitch:5, link:false}, deep: {speed:1, pitch:-4, link:false}, hz432: {speed:1, pitch:0, link:false, tune:-31.77}
+};
+const FX_TUNES = [['0', 'A = 440 Hz'], ['-31.77', 'A = 432 Hz'], ['-19.78', 'A = 435 Hz'], ['15.67', 'A = 444 Hz']];
+function fxSongsLoad(){
+  const v = store.get('mp_fxsong', {}), out = {};
+  if(v && typeof v === 'object' && !Array.isArray(v)) for(const k of Object.keys(v)) out[k] = fxNorm(v[k]);
+  return out;
+}
+function fxPresetsLoad(){
+  const v = store.get('mp_fxpre', null), out = {cur: 0, slots: [null, null, null, null, null]};
+  if(v && Array.isArray(v.slots)){
+    for(let i = 0; i < 5; i++){ const x = v.slots[i]; if(x && typeof x === 'object') out.slots[i] = {name: (typeof x.name === 'string' && x.name.trim() ? x.name.trim() : 'Mix ' + (i + 1)).slice(0, 16), fx: fxNorm(x.fx)}; }
+    out.cur = eqNum(v.cur, 0, 4, 0) | 0;
+  }
+  return out;
+}
+const fxPitch = () => S.fx.pitch + S.fx.tune / 100;   // semitones the pitch shifter must apply
+
 /* ================= state ================= */
 const S = {
   tracks: new Map(), playlists: [], covers: new Map(),
   view: 'all', q: '', sort: 'new',
   queue: [], qi: -1, curId: null, playing: false, hist: [], upNext: [], counted: false,
   shuffle: store.get('mp_shuffle', false), repeat: store.get('mp_repeat', 0), // 0 off, 1 all, 2 one
-  fx: Object.assign({speed:1, pitch:0, link:false}, store.get('mp_fx', {})),
+  fx: fxNorm(store.get('mp_fx', {})), fxSong: false,
   eq: loadEq()
 };
+let FXBASE = null;                         // normal settings while a song with its own settings plays
+let FXS = fxSongsLoad();                   // per-song settings: {songId: fx}
+let FXP = fxPresetsLoad();                 // my 5 saved presets: {cur, slots: [null | {name, fx}]}
 
 /* ================= ID3 tags ================= */
 function decodeText(body){
@@ -1036,9 +1105,10 @@ async function resizeCover(blob, max){
 
 /* ================= pitch shifter (delay-line granular, crossfaded) ================= */
 class Jungle{
-  constructor(ctx){
-    const BT = 0.1, FT = 0.05;
-    this.ctx = ctx; this.BT = BT;
+  constructor(ctx, q){
+    // quality: fast = short grains (less echo, more wobble), smooth = long grains (smoother voices, a little more echo)
+    const [BT, FT] = [[0.05, 0.025], [0.1, 0.05], [0.2, 0.1]][q == null ? 1 : q];
+    this.ctx = ctx; this.BT = BT; this.q = q == null ? 1 : q; this.srcs = [];
     const sr = ctx.sampleRate, len = Math.round(BT * sr), fl = Math.round(FT * sr);
     const mk = fn => { const b = ctx.createBuffer(1, len, sr), d = b.getChannelData(0); for(let i = 0; i < len; i++) d[i] = fn(i); return b; };
     const down = mk(i => i / len);
@@ -1063,7 +1133,13 @@ class Jungle{
       sf.connect(mix.gain);
       this.input.connect(delay); delay.connect(mix); mix.connect(this.output);
       sd.start(st); su.start(st); sf.start(st);
+      this.srcs.push(sd, su, sf);
     }
+  }
+  destroy(){
+    for(const x of this.srcs){ try{ x.stop(); }catch(e){} try{ x.disconnect(); }catch(e){} }
+    try{ this.input.disconnect(); }catch(e){}
+    try{ this.output.disconnect(); }catch(e){}
   }
   setRatio(r){
     const up = r > 1, D = Math.abs(r - 1) * this.BT, now = this.ctx.currentTime;
@@ -1081,7 +1157,7 @@ class Jungle{
 const audio = new Audio();
 audio.preload = 'auto';
 let ctx = null, G = null, curUrl = null, idleT = null;
-const needGraph = () => Math.abs(S.fx.pitch) >= 0.01 || eqActive() || eqSpecWanted();
+const needGraph = () => Math.abs(fxPitch()) >= 0.01 || eqActive() || eqSpecWanted();
 const gestured = () => !navigator.userActivation || navigator.userActivation.hasBeenActive;
 
 function ensureGraph(){
@@ -1115,23 +1191,24 @@ function ensureGraph(){
 // audio path: source → (equalizer) → (pitch shifter) → output. Parts that are off are not connected at all.
 function rewire(full){
   if(!G) return;
-  const pOn = Math.abs(S.fx.pitch) >= 0.01, eOn = eqActive(), lOn = eOn && S.eq.safe, aOn = eqSpecWanted();
+  const pOn = Math.abs(fxPitch()) >= 0.01, eOn = eqActive(), lOn = eOn && S.eq.safe, aOn = eqSpecWanted();
   const sig = (pOn ? 'p' : '-') + (eOn ? 'e' : '-') + (lOn ? 'l' : '-') + (aOn ? 'a' : '-');
   const p = eqProf(), now = G.c.currentTime;
   // "Prevent clipping" lowers the level by the strongest boost, the limiter catches what is left
   const db = p.pre - (S.eq.safe ? Math.max(0, ...p.g) : 0);
   G.pre.gain.setTargetAtTime(Math.pow(10, db / 20), now, 0.015);
   G.filters.forEach((f, i) => { f.gain.setTargetAtTime(p.g[i], now, 0.015); f.Q.setTargetAtTime(p.q, now, 0.015); });
-  if(!full && sig === G.sig){ if(pOn && G.jungle) G.jungle.setRatio(Math.pow(2, S.fx.pitch / 12)); return; }
+  if(G.jungle && G.jungle.q !== S.fx.q){ G.jungle.destroy(); G.jungle = null; full = true; }
+  if(!full && sig === G.sig){ if(pOn && G.jungle) G.jungle.setRatio(Math.pow(2, fxPitch() / 12)); return; }
   G.sig = sig;
   for(const n of [G.src, G.last, G.lim]){ try{ n.disconnect(); }catch(e){} }
   if(G.jungle){ try{ G.jungle.output.disconnect(); }catch(e){} }
   let head = G.src;
   if(eOn){ G.src.connect(G.pre); head = G.last; if(lOn){ G.last.connect(G.lim); head = G.lim; } }
   if(pOn){
-    if(!G.jungle) G.jungle = new Jungle(G.c);
+    if(!G.jungle) G.jungle = new Jungle(G.c, S.fx.q);
     head.connect(G.jungle.input); G.jungle.output.connect(G.c.destination);
-    G.jungle.setRatio(Math.pow(2, S.fx.pitch / 12));
+    G.jungle.setRatio(Math.pow(2, fxPitch() / 12));
   } else head.connect(G.c.destination);
   if(aOn) head.connect(G.an);
 }
@@ -1350,6 +1427,7 @@ async function startTrack(id, qi){
   if(!t) return;
   if(qi != null) S.qi = qi;
   S.curId = id; S.counted = false;
+  fxForSong(id);
   ensureGraph();
   updateNowPlaying();
   if(FOLDER){
@@ -1579,35 +1657,82 @@ $('#btnPrev').addEventListener('click', prev);
 
 /* ================= speed & pitch UI ================= */
 function fmtSt(x){ const r = Math.round(x * 10) / 10; return (r > 0 ? '+' : '') + r; }
+const fxSame = (a, b) => a.speed === b.speed && a.pitch === b.pitch && a.link === b.link && a.tune === b.tune;
 function syncFxUI(){
-  const {speed, pitch, link} = S.fx;
-  $('#fxSpeed').value = speed; $('#fxPitch').value = pitch; $('#fxLink').checked = link;
-  $('#vSpeed').textContent = speed.toFixed(2) + '×';
-  $('#vPitch').textContent = fmtSt(pitch) + ' semitones';
-  const eff = (link ? 12 * Math.log2(speed) : 0) + pitch;
+  const {speed, pitch, link, tune, q} = S.fx;
+  if(document.activeElement !== $('#fxSpeedN')) $('#fxSpeedN').value = speed.toFixed(2);
+  if(document.activeElement !== $('#fxPitchN')) $('#fxPitchN').value = pitch.toFixed(1);
+  $('#fxSpeed').value = Math.log2(speed); $('#fxPitch').value = pitch; $('#fxLink').checked = link;
+  $('#fxTune').value = FX_TUNES.some(x => +x[0] === tune) ? String(FX_TUNES.find(x => +x[0] === tune)[0]) : '0';
+  document.querySelectorAll('#fxQ button').forEach(b => b.classList.toggle('on', +b.dataset.q === q));
+  const eff = (link ? 12 * Math.log2(speed) : 0) + fxPitch();
   $('#fxNote').textContent = link
     ? 'Final pitch is about ' + fmtSt(eff) + ' semitones relative to the original.'
-    : (Math.abs(pitch) > 0.01 ? 'Pitch changes without changing speed. Large values may add a slight wobble to the sound.' : 'Speed changes without changing pitch.');
-  const changed = Math.abs(speed - 1) > 0.001 || Math.abs(pitch) > 0.01;
-  $('#fxLabel').textContent = changed ? speed.toFixed(2) + '× · ' + fmtSt(eff) : 'Speed and pitch';
+    : (Math.abs(fxPitch()) > 0.01 ? 'Pitch changes without changing speed. Long grains (Smooth) sound better on voices; short grains (Fast) keep the beat tight.' : 'Speed changes without changing pitch.');
+  const changed = Math.abs(speed - 1) > 0.001 || Math.abs(fxPitch()) > 0.01;
+  $('#fxLabel').textContent = changed ? speed.toFixed(2) + '× · ' + fmtSt(eff) : '';
   $('#btnFx').classList.toggle('on', changed);
+  const so = $('#fxSongOn'); so.checked = S.fxSong; so.disabled = S.curId == null;
+  $('#fxSongNote').textContent = S.curId == null ? 'Play a song first.' : 'Only this song uses these settings. Other songs keep the normal ones.';
+  document.querySelectorAll('#fxBuilt .chip').forEach(b => b.classList.toggle('on', fxSame(S.fx, fxNorm(FX_PRESETS[b.dataset.preset]))));
+  // the slot buttons are only rebuilt when a name changes: a click that starts a refresh (the number field loses focus) must not lose its button
+  const box = $('#fxMine'), sig = JSON.stringify(FXP.slots.map(x => x ? x.name : null));
+  if(box.dataset.sig !== sig){ box.dataset.sig = sig; box.innerHTML = FXP.slots.map((x, i) => '<button class="chip" data-m="' + i + '" dir="auto">' + (x ? esc(x.name) : 'Empty') + '</button>').join(''); }
+  box.querySelectorAll('button').forEach((b, i) => { b.classList.toggle('sel', i === FXP.cur); b.classList.toggle('on', !!FXP.slots[i] && fxSame(S.fx, FXP.slots[i].fx)); });
+  if(document.activeElement !== $('#fxMName')) $('#fxMName').value = FXP.slots[FXP.cur] ? FXP.slots[FXP.cur].name : '';
+  $('#fxMClear').disabled = !FXP.slots[FXP.cur];
 }
-function fxChanged(){ applyFx(); syncFxUI(); store.set('mp_fx', S.fx); remPush(); }
-$('#fxSpeed').addEventListener('input', e => { S.fx.speed = +e.target.value; fxChanged(); });
-$('#fxPitch').addEventListener('input', e => { S.fx.pitch = +e.target.value; fxChanged(); });
+function fxChanged(){
+  S.fx = fxNorm(S.fx);
+  applyFx(); syncFxUI();
+  if(S.fxSong && S.curId != null){ FXS[S.curId] = fxNorm(S.fx); store.set('mp_fxsong', FXS); }
+  else store.set('mp_fx', S.fx);
+  remPush();
+}
+// called when a song starts: a song with its own settings uses them, the next one goes back to the normal ones
+function fxForSong(id){
+  const m = FXS[id];
+  if(m){ if(!S.fxSong) FXBASE = fxNorm(S.fx); S.fx = fxNorm(m); S.fxSong = true; }
+  else if(S.fxSong){ S.fx = FXBASE ? fxNorm(FXBASE) : fxNorm(store.get('mp_fx', {})); S.fxSong = false; }
+  syncFxUI();
+}
+function fxApplyPreset(p){ S.fx = fxNorm(Object.assign({q: S.fx.q}, FX_PRESETS[p])); }
+const fxSetSpeed = v => { S.fx.speed = eqNum(v, 0.25, 4, S.fx.speed); fxChanged(); };
+const fxSetPitch = v => { S.fx.pitch = eqNum(v, -12, 12, S.fx.pitch); fxChanged(); };
+$('#fxTune').innerHTML = FX_TUNES.map(x => '<option value="' + x[0] + '">' + x[1] + '</option>').join('');
+$('#fxSpeed').addEventListener('input', e => { let v = +e.target.value; if(Math.abs(v) < 0.015) v = 0; fxSetSpeed(Math.pow(2, v)); });
+$('#fxPitch').addEventListener('input', e => { fxSetPitch(+e.target.value); });
+// an emptied field keeps the old value
+$('#fxSpeedN').addEventListener('change', e => { if(e.target.value !== '') fxSetSpeed(e.target.value); e.target.value = S.fx.speed.toFixed(2); });
+$('#fxPitchN').addEventListener('change', e => { if(e.target.value !== '') fxSetPitch(e.target.value); e.target.value = S.fx.pitch.toFixed(1); });
 $('#fxLink').addEventListener('change', e => { S.fx.link = e.target.checked; fxChanged(); });
+$('#fxTune').addEventListener('change', e => { S.fx.tune = +e.target.value; fxChanged(); });
+$('#fxQ').addEventListener('click', e => { const b = e.target.closest('button'); if(!b) return; S.fx.q = +b.dataset.q; fxChanged(); });
+$('#fxSongOn').addEventListener('change', e => {
+  if(S.curId == null){ e.target.checked = false; return; }
+  if(e.target.checked){ FXBASE = fxNorm(S.fx); S.fxSong = true; FXS[S.curId] = fxNorm(S.fx); store.set('mp_fxsong', FXS); }
+  else { delete FXS[S.curId]; S.fxSong = false; store.set('mp_fxsong', FXS); store.set('mp_fx', S.fx); }
+  syncFxUI();
+});
+$('#fxReset').addEventListener('click', () => { S.fx = fxNorm({q: S.fx.q}); fxChanged(); });
 $('#fx').addEventListener('click', e => {
   const b = e.target.closest('button'); if(!b) return;
-  if(b.dataset.speed){ S.fx.speed = +b.dataset.speed; fxChanged(); }
-  else if(b.dataset.pitch){ S.fx.pitch = +b.dataset.pitch; fxChanged(); }
-  else if(b.dataset.preset){
-    const p = b.dataset.preset;
-    if(p === 'original') S.fx = {speed:1, pitch:0, link:false};
-    if(p === 'slowed') S.fx = {speed:0.85, pitch:0, link:true};
-    if(p === 'nightcore') S.fx = {speed:1.25, pitch:0, link:true};
-    fxChanged();
+  if(b.dataset.speed){ fxSetSpeed(b.dataset.speed); }
+  else if(b.dataset.pitch){ fxSetPitch(b.dataset.pitch); }
+  else if(b.dataset.sd){ fxSetSpeed(S.fx.speed + +b.dataset.sd); }
+  else if(b.dataset.pd){ fxSetPitch(S.fx.pitch + +b.dataset.pd); }
+  else if(b.dataset.preset){ fxApplyPreset(b.dataset.preset); fxChanged(); }
+  else if(b.dataset.m != null){
+    FXP.cur = +b.dataset.m; store.set('mp_fxpre', FXP);
+    const x = FXP.slots[FXP.cur];
+    if(x){ S.fx = fxNorm(Object.assign({}, x.fx, {q: S.fx.q})); fxChanged(); } else { $('#fxMName').value = ''; syncFxUI(); }
   }
 });
+$('#fxMSave').addEventListener('click', () => {
+  FXP.slots[FXP.cur] = {name: ($('#fxMName').value.trim() || 'Mix ' + (FXP.cur + 1)).slice(0, 16), fx: fxNorm(S.fx)};
+  store.set('mp_fxpre', FXP); $('#fxMName').blur(); syncFxUI(); toast('Preset saved');
+});
+$('#fxMClear').addEventListener('click', () => { FXP.slots[FXP.cur] = null; store.set('mp_fxpre', FXP); $('#fxMName').value = ''; syncFxUI(); });
 $('#fxClose').addEventListener('click', () => $('#fx').classList.add('hidden'));
 
 /* ================= Equalizer ================= */
@@ -1934,7 +2059,7 @@ $('#list').addEventListener('dragend', () => { dragId = null; clearDropMarks(); 
 function reloadSettings(){
   S.sort = store.get('mp_sort', 'new'); $('#sortSel').value = S.sort;
   S.shuffle = store.get('mp_shuffle', false); S.repeat = store.get('mp_repeat', 0);
-  S.fx = Object.assign({speed:1, pitch:0, link:false}, store.get('mp_fx', {}));
+  S.fx = fxNorm(store.get('mp_fx', {})); S.fxSong = false; FXS = fxSongsLoad(); FXP = fxPresetsLoad(); if(S.curId != null) fxForSong(S.curId);
   S.eq = loadEq();
   theme = loadTheme(); applyTheme();
   const v = store.get('mp_vol', 0.8); audio.volume = v; volEl.value = v; fillRange(volEl);
@@ -3621,9 +3746,7 @@ async function remExec(c){
     case 'fx': {
       // speed and pitch from the phone: same values and presets as the panel on the computer
       const f = S.fx;
-      if(c.preset === 'original') S.fx = {speed: 1, pitch: 0, link: false};
-      else if(c.preset === 'slowed') S.fx = {speed: 0.85, pitch: 0, link: true};
-      else if(c.preset === 'nightcore') S.fx = {speed: 1.25, pitch: 0, link: true};
+      if(c.preset === 'original' || c.preset === 'slowed' || c.preset === 'nightcore') fxApplyPreset(c.preset);
       else {
         const sp = c.s === undefined ? null : remNum(c.s, 0.5, 2), pt = c.p === undefined ? null : remNum(c.p, -12, 12);
         if(sp != null) f.speed = Math.round(sp * 20) / 20;
@@ -3784,6 +3907,7 @@ async function restoreResume(){
   if(!FOLDER || !r || !r.file) return;
   const t = [...S.tracks.values()].find(x => x.file === r.file); if(!t) return;
   S.queue = viewIds(); S.qi = S.queue.indexOf(t.id); S.curId = t.id;
+  fxForSong(t.id);
   updateNowPlaying();
   const ok = await loadUrl(fileUrl(t.file));
   if(S.curId !== t.id) return;
