@@ -1322,6 +1322,8 @@ function syncNpFav(){
 }
 function syncPlayBtn(){
   remPush();
+  // the Windows taskbar preview button shows Pause or Play
+  if(IS_APP){ try{ Promise.resolve(TAURI.core.invoke('thumb_state', {playing: !!S.playing})).catch(() => {}); }catch(e){} }
   $('#btnPlay').innerHTML = icon(S.playing ? 'pause' : 'play', 'fill');
   const t = S.tracks.get(S.curId);
   document.title = t && S.playing ? t.title + ' — My Music Player' : 'My Music Player';

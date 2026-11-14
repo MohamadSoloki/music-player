@@ -7,6 +7,8 @@ use tauri_plugin_fs::FsExt;
 
 mod musicdir;
 mod remote;
+#[cfg(windows)]
+mod thumbbar;
 
 /// Is `path` really inside the `base` folder? (resolves `..` and links)
 fn is_inside(base: &Path, path: &Path) -> Result<bool, String> {
@@ -297,6 +299,15 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
     Ok(())
 }
 
+/// The page tells whether music is playing (the taskbar thumbnail button shows Pause or Play).
+#[tauri::command]
+fn thumb_state(playing: bool) {
+    #[cfg(windows)]
+    thumbbar::set_playing(playing);
+    #[cfg(not(windows))]
+    let _ = playing;
+}
+
 /// The page calls this when the user chose Quit in the tray menu (after saving its state).
 #[tauri::command]
 fn quit_app(app: tauri::AppHandle) {
@@ -344,6 +355,16 @@ pub fn run() {
             app.manage(MusicDir { cur: Mutex::new(dir), prev: Mutex::new(None) });
             #[cfg(desktop)]
             setup_tray(app)?;
+            // Previous / Play-Pause / Next under the taskbar preview (the page handles them like the tray menu)
+            #[cfg(windows)]
+            if let Some(w) = app.get_webview_window("main") {
+                if let Ok(h) = w.hwnd() {
+                    let app2 = app.handle().clone();
+                    thumbbar::install(h.0 as isize, Box::new(move |cmd| {
+                        let _ = app2.emit("tray-cmd", cmd);
+                    }));
+                }
+            }
             Ok(())
         })
         // The window's close button only hides it; the music keeps playing. Quit is in the tray menu.
@@ -357,6 +378,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             quit_app,
+            thumb_state,
             move_to_trash,
             music_dir_info,
             pick_music_folder,
