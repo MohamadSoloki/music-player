@@ -25,6 +25,9 @@ pub struct Activity {
     pub album: String,
     pub start: i64,
     pub end: Option<i64>,
+    /// address of the cover picture on the internet (Discord cannot show files from this computer)
+    #[serde(default)]
+    pub cover: Option<String>,
 }
 
 #[derive(Clone)]
@@ -122,8 +125,12 @@ fn activity_json(a: &Activity) -> Value {
         "details": pad(&a.title),
         "state": pad(if a.artist.trim().is_empty() { "Unknown artist" } else { &a.artist }),
     });
-    // "icon" is the optional picture the owner uploads in the Discord developer portal (Rich Presence > Art Assets)
-    let mut assets = json!({"large_image": "icon"});
+    // the cover when there is one; else "icon", the optional picture the owner uploads in the Discord developer portal (Rich Presence > Art Assets)
+    let image = match &a.cover {
+        Some(u) if u.starts_with("https://") && u.len() <= 300 => u.as_str(),
+        _ => "icon",
+    };
+    let mut assets = json!({"large_image": image});
     if !a.album.trim().is_empty() {
         assets["large_text"] = json!(pad(&a.album));
     }
@@ -351,7 +358,7 @@ mod tests {
     }
 
     fn song(title: &str) -> Activity {
-        Activity { title: title.into(), artist: "Kendrick Lamar".into(), album: "Mr. Morale & the Big Steppers".into(), start: 1000, end: Some(1200) }
+        Activity { title: title.into(), artist: "Kendrick Lamar".into(), album: "Mr. Morale & the Big Steppers".into(), start: 1000, end: Some(1200), cover: None }
     }
 
     fn activities(f: &Fake) -> Vec<Value> {
@@ -377,6 +384,18 @@ mod tests {
         assert_eq!(act["state"], "Kendrick Lamar");
         assert_eq!(act["assets"]["large_text"], "Mr. Morale & the Big Steppers");
         assert_eq!(act["timestamps"], json!({"start": 1000, "end": 1200}));
+        assert_eq!(act["assets"]["large_image"], "icon", "no cover: the default picture");
+    }
+
+    #[test]
+    fn cover_address_is_used_only_when_it_is_https() {
+        let mut a = song("Prayer");
+        a.cover = Some("https://is1-ssl.mzstatic.com/x/512x512bb.jpg".into());
+        assert_eq!(activity_json(&a)["assets"]["large_image"], "https://is1-ssl.mzstatic.com/x/512x512bb.jpg");
+        for bad in ["http://x/a.jpg", "file:///C:/a.jpg", "", &format!("https://{}", "a".repeat(400))] {
+            a.cover = Some(bad.into());
+            assert_eq!(activity_json(&a)["assets"]["large_image"], "icon", "{}", bad);
+        }
     }
 
     #[test]
@@ -469,7 +488,7 @@ mod tests {
         assert_eq!(pad("a").chars().count(), 2);
         assert_eq!(pad("").chars().count(), 2);
         assert_eq!(pad(&"x".repeat(300)).chars().count(), 128);
-        let a = Activity { title: "T".into(), artist: " ".into(), album: "".into(), start: 5, end: None };
+        let a = Activity { title: "T".into(), artist: " ".into(), album: "".into(), start: 5, end: None, cover: None };
         let j = activity_json(&a);
         assert_eq!(j["state"], "Unknown artist");
         assert!(j["assets"].get("large_text").is_none());

@@ -5,6 +5,7 @@ use tauri::{Emitter, Manager};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_fs::FsExt;
 
+mod covers;
 mod discord;
 mod musicdir;
 mod remote;
@@ -309,6 +310,14 @@ fn discord_set(state: tauri::State<DiscordState>, client_id: String, activity: O
     state.0.set(client_id.trim().to_string(), activity);
 }
 
+/// Official cover address for a song (iTunes Search), for the Discord presence. Ok(None): not found; Err: no internet.
+#[tauri::command]
+async fn discord_cover(title: String, artist: String) -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || covers::lookup(&title, &artist))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 /// "off", "connected", "no_discord" or "bad_id" (for the Discord dialog).
 #[tauri::command]
 fn discord_status(state: tauri::State<DiscordState>) -> String {
@@ -399,6 +408,7 @@ pub fn run() {
             thumb_state,
             discord_set,
             discord_status,
+            discord_cover,
             move_to_trash,
             music_dir_info,
             pick_music_folder,

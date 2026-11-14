@@ -3153,22 +3153,58 @@ $('#btnStats').addEventListener('click', openStats);
    the Discord desktop app; here we only decide what to show. Off by default; needs the owner's own Application ID. */
 var DISC = discNorm(store.get('mp_discord', {}));
 var discT = 0, discLast = {key: '|'};
-function discNorm(o){ o = o || {}; return {on: o.on === true, id: String(o.id || '').replace(/\s+/g, '').slice(0, 25)}; }
+function discNorm(o){ o = o || {}; return {on: o.on === true, id: String(o.id || '').replace(/\s+/g, '').slice(0, 25), covers: o.covers === true}; }
 const discValid = () => /^\d{15,25}$/.test(DISC.id);
 function discordSync(now){
   clearTimeout(discT);
   if(IS_APP) discT = setTimeout(discordSend, now ? 0 : 700);
 }
-function discordSend(){
+// what is playing right now as a Discord activity (null when paused or off)
+function discAct(){
+  const t = S.tracks.get(S.curId);
+  if(!t || audio.paused || audio.ended) return null;
+  const rate = audio.playbackRate || 1, cur = audio.currentTime || 0, d = curDur(), now = Date.now() / 1000;
+  return {title: t.title || 'Unknown title', artist: t.artist || '', album: t.album || '', start: Math.round(now - cur / rate), end: d > 0 ? Math.round(now + (d - cur) / rate) : null, cover: null};
+}
+// Covers: Discord only shows pictures that have an internet address, so the official cover is looked up by title and
+// artist (Rust: iTunes Search) and remembered. "" = looked up, none found (tried again after a week).
+var DCOV = (() => { const v = store.get('mp_dcover', {}); return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; })();
+var discPend = {}, discFailT = {};
+const discKey = t => (t.artist || '').trim().toLowerCase() + '|' + (t.title || '').trim().toLowerCase();
+function discCoverCached(t){
+  const c = DCOV[discKey(t)];
+  return c && (c.u || Date.now() - c.t < 7 * 864e5) ? c.u : undefined;   // undefined: not known yet
+}
+// the cover address, waiting at most `ms` for a lookup that is still running (it carries on in the background)
+async function discCover(t, ms){
+  const key = discKey(t), known = discCoverCached(t);
+  if(known !== undefined) return known;
+  if(!(t.artist || '').trim() || Date.now() - (discFailT[key] || 0) < 60000) return '';
+  if(!discPend[key]){
+    discPend[key] = (async () => {
+      let u = null;
+      try{ u = await TAURI.core.invoke('discord_cover', {title: t.title || '', artist: t.artist || ''}); }
+      catch(e){ discFailT[key] = Date.now(); delete discPend[key]; return ''; }      // no internet: not remembered
+      DCOV[key] = {u: u || '', t: Date.now()};
+      const ks = Object.keys(DCOV); if(ks.length > 500) ks.sort((a, b) => DCOV[a].t - DCOV[b].t).slice(0, ks.length - 400).forEach(k => delete DCOV[k]);
+      store.set('mp_dcover', DCOV); delete discPend[key];
+      if(u && S.curId === t.id) discordSync(true);   // the lookup was slower than we waited: show the cover now
+      return u || '';
+    })();
+  }
+  return await Promise.race([discPend[key], new Promise(r => setTimeout(() => r(''), ms))]);
+}
+async function discordSend(){
   if(!IS_APP) return;
   const id = DISC.on && discValid() ? DISC.id : '';
-  const t = S.tracks.get(S.curId);
-  let act = null;
-  if(id && t && !audio.paused && !audio.ended){
-    const rate = audio.playbackRate || 1, cur = audio.currentTime || 0, d = curDur(), now = Date.now() / 1000;
-    act = {title: t.title || 'Unknown title', artist: t.artist || '', album: t.album || '', start: Math.round(now - cur / rate), end: d > 0 ? Math.round(now + (d - cur) / rate) : null};
+  let act = id ? discAct() : null;
+  if(act && DISC.covers){
+    const t = S.tracks.get(S.curId), u = await discCover(t, 2500);
+    // playback may have changed while we waited: a newer event sends the right thing
+    if(S.curId !== t.id || audio.paused || !DISC.on) return;
+    act = discAct(); if(act && u) act.cover = u;
   }
-  const key = id + '|' + (act ? [act.title, act.artist, act.album].join('\u0001') : '');
+  const key = id + '|' + (act ? [act.title, act.artist, act.album, act.cover || ''].join('\u0001') : '');
   // the same song and time bar (give or take a second) is already shown
   if(discLast.key === key && (!act || (Math.abs(act.start - discLast.start) <= 1.5 && Math.abs((act.end || 0) - (discLast.end || 0)) <= 1.5))) return;
   discLast = {key, start: act && act.start, end: act && act.end};
@@ -3187,6 +3223,7 @@ function openDiscord(){
   openModal('<h3>Discord status</h3>' +
     '<p class="muted small" style="margin:0 0 10px">Shows the song you are playing on your Discord profile, like Spotify: title, artist, album and a time bar. It disappears when you pause.</p>' +
     '<label class="trow"><div class="tl">Show what I\'m listening to<small>Works with the Discord desktop app on this computer</small></div><input type="checkbox" class="tog" id="dcOn" role="switch"></label>' +
+    '<label class="trow"><div class="tl">Look up covers online<small>Finds the song\'s cover on iTunes and shows it. Sends the title and artist to Apple; needs internet</small></div><input type="checkbox" class="tog" id="dcCov" role="switch"></label>' +
     '<div class="muted small" style="margin:12px 0 4px">Application ID</div>' +
     '<input class="inp" id="dcId" inputmode="numeric" maxlength="25" autocomplete="off" spellcheck="false" placeholder="A long number, for example 123456789012345678" style="direction:ltr">' +
     '<div class="dc-status" id="dcStatus" role="status"></div>' +
@@ -3199,7 +3236,8 @@ function openDiscord(){
     '<div class="actions"><button class="btn primary" data-close>Done</button></div>',
     m => {
       const on = m.querySelector('#dcOn'), idEl = m.querySelector('#dcId'), st = m.querySelector('#dcStatus');
-      on.checked = DISC.on; idEl.value = DISC.id;
+      const cov = m.querySelector('#dcCov');
+      on.checked = DISC.on; idEl.value = DISC.id; cov.checked = DISC.covers;
       const refresh = async () => {
         let s = 'off';
         try{ s = await TAURI.core.invoke('discord_status'); }catch(e){}
@@ -3208,7 +3246,8 @@ function openDiscord(){
       };
       const save = () => { store.set('mp_discord', DISC); discordSync(true); setTimeout(refresh, 700); refresh(); };
       on.addEventListener('change', () => { DISC.on = on.checked; save(); });
-      idEl.addEventListener('change', () => { DISC = discNorm({on: DISC.on, id: idEl.value}); idEl.value = DISC.id; save(); });
+      cov.addEventListener('change', () => { DISC.covers = cov.checked; save(); });
+      idEl.addEventListener('change', () => { DISC = discNorm({on: DISC.on, id: idEl.value, covers: DISC.covers}); idEl.value = DISC.id; save(); });
       refresh(); timer = setInterval(refresh, 2000);
     }, () => clearInterval(timer));
 }
