@@ -2329,7 +2329,7 @@ function openEdit(id){
 /* ---- Fix info from link: title / artist / album / cover of an Apple Music, iTunes or Spotify song link, applied only after the owner confirms ---- */
 function openFixInfo(id){
   const t = S.tracks.get(id); if(!t) return;
-  const F = [['title', 'Title'], ['artist', 'Artist'], ['album', 'Album'], ['dcover', 'Discord cover']];
+  const F = [['title', 'Title'], ['artist', 'Artist'], ['album', 'Album'], ['cover', 'Cover']];
   openModal('<h3>Fix info from link</h3>' +
     '<p class="muted small" style="margin:0 0 8px">Paste the song\'s link from Apple Music, iTunes or Spotify. The app reads its title, artist, album and cover.</p>' +
     '<div class="fi-link"><input class="inp" id="fiUrl" dir="ltr" spellcheck="false" autocomplete="off" placeholder="https://open.spotify.com/track/… or https://music.apple.com/…"><button class="btn" id="fiGo">Look up</button></div>' +
@@ -2347,11 +2347,11 @@ function openFixInfo(id){
         catch(e){ if(my === seq && m.isConnected) say(typeof e === 'string' ? e : 'Could not read the link. Check it and try again.'); return; }
         if(my !== seq || !m.isConnected) return;
         if(!r) return say('Nothing was found for this link.');
-        hit = r; hit.dcover = hit.cover;   // the picture address is kept on the song as `dcover`
+        hit = r;
         const rows = F.filter(([k]) => hit[k]).map(([k, label]) => {
-          const cur = k === 'dcover' ? (t.dcover || '') : (t[k] || '');
+          const cur = k === 'cover' ? (t.dcover || '') : (t[k] || '');   // t.dcover: address of the cover that came from a link
           const same = cur === hit[k];
-          const from = k === 'dcover' ? (cur ? 'set' : '—') : esc(cur || '—'), to = k === 'dcover' ? 'from the link' : esc(hit[k]);
+          const from = k === 'cover' ? (t.hasCover ? 'has a cover' : '—') : esc(cur || '—'), to = k === 'cover' ? 'the link\'s cover' : esc(hit[k]);
           return '<tr class="' + (same ? 'same' : '') + '"><td><label><input type="checkbox" data-f="' + k + '"' + (same ? ' disabled' : ' checked') + '>' + label + '</label></td>' +
             '<td dir="auto">' + from + '</td><td dir="auto" class="' + (same ? '' : 'new') + '">' + (same ? 'same' : to) + '</td></tr>';
         });
@@ -2370,11 +2370,21 @@ function openFixInfo(id){
       apply.onclick = async () => {
         const picked = [...body.querySelectorAll('input[data-f]:checked')].map(i => i.dataset.f); if(!picked.length || !hit) return;
         try{
-          for(const k of picked) t[k] = hit[k];
+          let coverFail = false;
+          if(picked.includes('cover')){
+            // the picture goes into the app's library like a cover chosen in Edit details; the address also serves Discord
+            try{
+              const blob = await resizeCover(new Blob([await TAURI.core.invoke('link_cover', {url: hit.cover})]));
+              await dbPut('covers', blob, id); putCoverUrl(id, blob);
+              t.hasCover = true; BK.dirtyCovers.add(id);
+            }catch(e){ console.error(e); coverFail = true; }
+            t.dcover = hit.cover;
+          }
+          for(const k of picked) if(k !== 'cover') t[k] = hit[k];
           await dbPut('tracks', t);
           close(); renderAll();
           if(S.curId === id){ updateNowPlaying(); discordSync(true); }
-          toast('Info updated');
+          toast(coverFail ? 'Info updated, but the cover could not be downloaded' : 'Info updated');
         }catch(e){ console.error(e); toast('Not saved: ' + (e && e.message || 'error')); }
       };
     });

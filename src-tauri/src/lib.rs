@@ -319,6 +319,13 @@ async fn link_info(link: String) -> Result<serde_json::Value, String> {
         .map_err(|e| e.to_string())?
 }
 
+/// The cover picture of a song link (the address comes from `link_info`; only Apple / Spotify picture servers are used).
+#[tauri::command]
+async fn link_cover(url: String) -> Result<tauri::ipc::Response, String> {
+    let bytes = tauri::async_runtime::spawn_blocking(move || songlink::image(&url)).await.map_err(|e| e.to_string())??;
+    Ok(tauri::ipc::Response::new(bytes))
+}
+
 /// "off", "connected", "no_discord" or "bad_id" (for the Discord dialog).
 #[tauri::command]
 fn discord_status(state: tauri::State<DiscordState>) -> String {
@@ -410,6 +417,7 @@ pub fn run() {
             discord_set,
             discord_status,
             link_info,
+            link_cover,
             move_to_trash,
             music_dir_info,
             pick_music_folder,

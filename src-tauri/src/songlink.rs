@@ -185,7 +185,7 @@ fn spotify_hit(html: &str) -> Option<Value> {
 
 // ---------- network ----------
 
-fn get(url: &str, spotify: bool) -> Result<Vec<u8>, String> {
+fn get(url: &str, who: &str) -> Result<Vec<u8>, String> {
     // reqwest is built without a bundled crypto provider; install `ring` once (Err = already installed)
     let _ = rustls::crypto::ring::default_provider().install_default();
     let client = reqwest::blocking::Client::builder()
@@ -194,7 +194,6 @@ fn get(url: &str, spotify: bool) -> Result<Vec<u8>, String> {
         .user_agent("MyMusicPlayer/1.0")
         .build()
         .map_err(|e| e.to_string())?;
-    let who = if spotify { "Spotify" } else { "Apple" };
     let fail = |e: reqwest::Error| format!("Could not reach {}. Check the internet connection and try again. ({})", who, e.without_url());
     let resp = client.get(url).header("Accept-Language", "en").send().map_err(fail)?;
     if !resp.status().is_success() {
@@ -207,15 +206,32 @@ fn get(url: &str, spotify: bool) -> Result<Vec<u8>, String> {
 pub fn info(link: &str) -> Result<Value, String> {
     match parse_link(link)? {
         Link::Apple(cc, id) => {
-            let bytes = get(&format!("https://itunes.apple.com/lookup?id={}&country={}", id, cc), false)?;
+            let bytes = get(&format!("https://itunes.apple.com/lookup?id={}&country={}", id, cc), "Apple")?;
             let body: Value = serde_json::from_slice(&bytes).map_err(|_| "Apple gave an answer that cannot be read.".to_string())?;
             apple_hit(&body).ok_or_else(|| "Apple has no song for this link.".to_string())
         }
         Link::Spotify(id) => {
-            let bytes = get(&format!("https://open.spotify.com/track/{}", id), true)?;
+            let bytes = get(&format!("https://open.spotify.com/track/{}", id), "Spotify")?;
             spotify_hit(&String::from_utf8_lossy(&bytes)).ok_or_else(|| "Spotify did not give the song's details. Try again later, or use an Apple Music link.".to_string())
         }
     }
+}
+
+/// The picture behind a cover address from `info` (JPEG, PNG or WebP, at most 5 MB). Only the services' own
+/// picture servers are contacted.
+pub fn image(url: &str) -> Result<Vec<u8>, String> {
+    if !(cover_ok(url, ".mzstatic.com") || cover_ok(url, "i.scdn.co")) {
+        return Err("This picture address is not accepted.".into());
+    }
+    let b = get(url, if url.contains("scdn.co") { "Spotify" } else { "Apple" })?;
+    if b.len() > 5_000_000 || !looks_like_image(&b) {
+        return Err("The cover is not a usable picture.".into());
+    }
+    Ok(b)
+}
+
+fn looks_like_image(b: &[u8]) -> bool {
+    b.starts_with(&[0xFF, 0xD8]) || b.starts_with(&[0x89, b'P', b'N', b'G']) || (b.len() > 12 && &b[..4] == b"RIFF" && &b[8..12] == b"WEBP")
 }
 
 #[cfg(test)]
@@ -299,6 +315,15 @@ mod tests {
             let b = json!({"results": [{"kind": "song", "trackName": "P", "artistName": "K", "artworkUrl100": bad}]});
             assert_eq!(apple_hit(&b).unwrap()["cover"], "", "{}", bad);
         }
+    }
+
+    #[test]
+    fn only_the_services_picture_servers_are_downloaded() {
+        for u in ["http://i.scdn.co/image/a", "https://evil.example/a.jpg", "https://i.scdn.co.evil.example/a", "file:///etc/passwd", "https://localhost/a.png"] {
+            assert!(image(u).is_err(), "{}", u);
+        }
+        assert!(looks_like_image(&[0xFF, 0xD8, 0xFF, 0xE0]) && looks_like_image(b"\x89PNG\r\n") && looks_like_image(b"RIFF1234WEBPVP8 "));
+        assert!(!looks_like_image(b"<html>") && !looks_like_image(b""));
     }
 
     #[test]
