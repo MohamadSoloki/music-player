@@ -318,6 +318,14 @@ async fn discord_cover(title: String, artist: String) -> Result<Option<String>, 
         .map_err(|e| e.to_string())?
 }
 
+/// Official title / artist / album / cover of a song (iTunes Search) for "Fix info online". Ok(null): not found.
+#[tauri::command]
+async fn online_info(title: String, artist: String) -> Result<serde_json::Value, String> {
+    tauri::async_runtime::spawn_blocking(move || covers::info(&title, &artist))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 /// "off", "connected", "no_discord" or "bad_id" (for the Discord dialog).
 #[tauri::command]
 fn discord_status(state: tauri::State<DiscordState>) -> String {
@@ -409,6 +417,7 @@ pub fn run() {
             discord_set,
             discord_status,
             discord_cover,
+            online_info,
             move_to_trash,
             music_dir_info,
             pick_music_folder,

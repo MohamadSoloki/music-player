@@ -251,6 +251,13 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
 .inp{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;outline:0}
 .inp:focus{border-color:var(--accent2)}
 .edit-grid{display:flex;gap:18px;flex-wrap:wrap}
+.fi-wrap{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.fi-cover{width:96px;height:96px;border-radius:10px;object-fit:cover;background:var(--panel2,#222)}
+.fi-tab{border-collapse:collapse;flex:1;min-width:260px}
+.fi-tab th{text-align:left;font-weight:500;font-size:12px;color:var(--muted);padding:2px 8px 6px}
+.fi-tab td{padding:6px 8px;vertical-align:top;border-top:1px solid var(--line,#ffffff14)}
+.fi-tab td.new{color:var(--accent)} .fi-tab tr.same td{opacity:.55}
+.fi-tab label{display:flex;gap:6px;align-items:center;white-space:nowrap}
 .edit-cover{display:flex;flex-direction:column;gap:8px;align-items:center}
 .edit-fields{flex:1;min-width:200px;display:flex;flex-direction:column;gap:12px}
 .edit-fields label{display:flex;flex-direction:column;gap:5px;color:var(--muted);font-size:12px}
@@ -2002,7 +2009,7 @@ function openMenu(id, x, y){
     ['select', 'Select songs', 'check'],
     ['playnext', 'Play next', 'next'], inQueue(id) ? ['queue', 'Remove from queue', 'x'] : ['queue', 'Add to queue', 'queue'],
     ['fav', t.fav ? 'Remove from favorites' : 'Add to favorites', 'heart'],
-    ['addpl', 'Add to playlist', 'plus'], ['edit', 'Edit details', 'edit'], null,
+    ['addpl', 'Add to playlist', 'plus'], ['edit', 'Edit details', 'edit'], ...(IS_APP ? [['fixinfo', 'Fix info online', 'search']] : []), null,
     isPlView() ? ['rmpl', 'Remove from this playlist', 'minus', 'danger'] : ['del', FOLDER ? 'Delete (move to Recycle Bin)' : 'Remove from library', 'trash', 'danger']
   ];
   const m = document.createElement('div'); m.id = 'ctx';
@@ -2015,6 +2022,7 @@ function openMenu(id, x, y){
 }
 function rowAction(a, id){
   if(a === 'edit') openEdit(id);
+  else if(a === 'fixinfo') openFixInfo(id);
   else if(a === 'select') enterSelect(id);
   else if(a === 'addpl') openAddToPlaylist(id);
   else if(a === 'del') deleteTrack(id);
@@ -2314,6 +2322,45 @@ function openEdit(id){
       };
     },
     () => { if(tmpUrl) URL.revokeObjectURL(tmpUrl); });
+}
+
+/* ---- Fix info online: the official title / artist / album from iTunes, applied only after the owner confirms ---- */
+function openFixInfo(id){
+  const t = S.tracks.get(id); if(!t) return;
+  const F = [['title', 'Title'], ['artist', 'Artist'], ['album', 'Album']];
+  openModal('<h3>Fix info online</h3><div id="fiBody" class="muted">Searching iTunes…</div>' +
+    '<div class="actions"><button class="btn primary" id="fiApply" disabled>Apply</button><button class="btn" data-close>Cancel</button></div>',
+    async (m, close) => {
+      const body = m.querySelector('#fiBody'), apply = m.querySelector('#fiApply');
+      const say = txt => { body.className = 'muted'; body.textContent = txt; };
+      let hit;
+      try{ hit = await TAURI.core.invoke('online_info', {title: t.title || '', artist: t.artist || ''}); }
+      catch(e){ if(m.isConnected) say('Could not reach iTunes. Check the internet connection and try again.'); return; }
+      if(!m.isConnected) return;
+      if(!hit) return say('iTunes does not have this song, or its title and artist are too different. Try Edit details: keep one artist and remove extra words from the title.');
+      const rows = F.filter(([k]) => hit[k]).map(([k, label]) => {
+        const same = (t[k] || '') === hit[k];
+        return '<tr class="' + (same ? 'same' : '') + '"><td><label><input type="checkbox" data-f="' + k + '"' + (same ? ' disabled' : ' checked') + '>' + label + '</label></td>' +
+          '<td dir="auto">' + esc(t[k] || '—') + '</td><td dir="auto" class="' + (same ? '' : 'new') + '">' + (same ? 'same' : esc(hit[k])) + '</td></tr>';
+      });
+      body.className = '';
+      body.innerHTML = '<div class="fi-wrap">' + (hit.cover ? '<img class="fi-cover" alt="" src="' + esc(hit.cover) + '" onerror="this.remove()">' : '') +
+        '<table class="fi-tab"><tr><th></th><th>In the app</th><th>On iTunes</th></tr>' + rows.join('') + '</table></div>' +
+        '<p class="muted small" style="margin:10px 0 0">Only the app\'s library changes. The file itself is not touched.</p>';
+      const sync = () => { apply.disabled = !body.querySelector('input[data-f]:checked'); };
+      if(rows.every(r => r.includes('class="same"'))) say('Everything already matches iTunes.');
+      sync(); body.addEventListener('change', sync);
+      apply.onclick = async () => {
+        const picked = [...body.querySelectorAll('input[data-f]:checked')].map(i => i.dataset.f); if(!picked.length) return;
+        try{
+          for(const k of picked) t[k] = hit[k];
+          await dbPut('tracks', t);
+          close(); renderAll();
+          if(S.curId === id){ updateNowPlaying(); discordSync(true); }
+          toast('Info updated');
+        }catch(e){ console.error(e); toast('Not saved: ' + (e && e.message || 'error')); }
+      };
+    });
 }
 
 /* ---- playlists ---- */
