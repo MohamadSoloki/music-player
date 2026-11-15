@@ -5,7 +5,7 @@ use tauri::{Emitter, Manager};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_fs::FsExt;
 
-mod covers;
+mod songlink;
 mod discord;
 mod musicdir;
 mod remote;
@@ -310,18 +310,11 @@ fn discord_set(state: tauri::State<DiscordState>, client_id: String, activity: O
     state.0.set(client_id.trim().to_string(), activity);
 }
 
-/// Official cover address for a song (iTunes Search), for the Discord presence. Ok(None): not found; Err: no internet.
+/// Title / artist / album / cover of the song behind an Apple Music, iTunes or Spotify link ("Fix info from link").
+/// Err: a message for the owner.
 #[tauri::command]
-async fn discord_cover(title: String, artist: String) -> Result<Option<String>, String> {
-    tauri::async_runtime::spawn_blocking(move || covers::lookup(&title, &artist))
-        .await
-        .map_err(|e| e.to_string())?
-}
-
-/// Official title / artist / album / cover of a song (iTunes Search) for "Fix info online". Ok(null): not found.
-#[tauri::command]
-async fn online_info(title: String, artist: String) -> Result<serde_json::Value, String> {
-    tauri::async_runtime::spawn_blocking(move || covers::info(&title, &artist))
+async fn link_info(link: String) -> Result<serde_json::Value, String> {
+    tauri::async_runtime::spawn_blocking(move || songlink::info(&link))
         .await
         .map_err(|e| e.to_string())?
 }
@@ -416,8 +409,7 @@ pub fn run() {
             thumb_state,
             discord_set,
             discord_status,
-            discord_cover,
-            online_info,
+            link_info,
             move_to_trash,
             music_dir_info,
             pick_music_folder,

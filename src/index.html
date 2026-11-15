@@ -251,6 +251,7 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
 .inp{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;outline:0}
 .inp:focus{border-color:var(--accent2)}
 .edit-grid{display:flex;gap:18px;flex-wrap:wrap}
+.fi-link{display:flex;gap:8px;margin:0 0 10px} .fi-link .inp{flex:1;min-width:0}
 .fi-wrap{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
 .fi-cover{width:96px;height:96px;border-radius:10px;object-fit:cover;background:var(--panel2,#222)}
 .fi-tab{border-collapse:collapse;flex:1;min-width:260px}
@@ -687,6 +688,7 @@ const ICONS = {
   x:'<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
   music:'<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
   sliders:'<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>',
+  link:'<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
   search:'<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
   list:'<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>',
   minus:'<line x1="5" y1="12" x2="19" y2="12"/>',
@@ -2009,7 +2011,7 @@ function openMenu(id, x, y){
     ['select', 'Select songs', 'check'],
     ['playnext', 'Play next', 'next'], inQueue(id) ? ['queue', 'Remove from queue', 'x'] : ['queue', 'Add to queue', 'queue'],
     ['fav', t.fav ? 'Remove from favorites' : 'Add to favorites', 'heart'],
-    ['addpl', 'Add to playlist', 'plus'], ['edit', 'Edit details', 'edit'], ...(IS_APP ? [['fixinfo', 'Fix info online', 'search']] : []), null,
+    ['addpl', 'Add to playlist', 'plus'], ['edit', 'Edit details', 'edit'], ...(IS_APP ? [['fixinfo', 'Fix info from link', 'link']] : []), null,
     isPlView() ? ['rmpl', 'Remove from this playlist', 'minus', 'danger'] : ['del', FOLDER ? 'Delete (move to Recycle Bin)' : 'Remove from library', 'trash', 'danger']
   ];
   const m = document.createElement('div'); m.id = 'ctx';
@@ -2324,34 +2326,49 @@ function openEdit(id){
     () => { if(tmpUrl) URL.revokeObjectURL(tmpUrl); });
 }
 
-/* ---- Fix info online: the official title / artist / album from iTunes, applied only after the owner confirms ---- */
+/* ---- Fix info from link: title / artist / album / cover of an Apple Music, iTunes or Spotify song link, applied only after the owner confirms ---- */
 function openFixInfo(id){
   const t = S.tracks.get(id); if(!t) return;
-  const F = [['title', 'Title'], ['artist', 'Artist'], ['album', 'Album']];
-  openModal('<h3>Fix info online</h3><div id="fiBody" class="muted">Searching iTunes…</div>' +
+  const F = [['title', 'Title'], ['artist', 'Artist'], ['album', 'Album'], ['dcover', 'Discord cover']];
+  openModal('<h3>Fix info from link</h3>' +
+    '<p class="muted small" style="margin:0 0 8px">Paste the song\'s link from Apple Music, iTunes or Spotify. The app reads its title, artist, album and cover.</p>' +
+    '<div class="fi-link"><input class="inp" id="fiUrl" dir="ltr" spellcheck="false" autocomplete="off" placeholder="https://open.spotify.com/track/… or https://music.apple.com/…"><button class="btn" id="fiGo">Look up</button></div>' +
+    '<div id="fiBody" class="muted small"></div>' +
     '<div class="actions"><button class="btn primary" id="fiApply" disabled>Apply</button><button class="btn" data-close>Cancel</button></div>',
-    async (m, close) => {
-      const body = m.querySelector('#fiBody'), apply = m.querySelector('#fiApply');
-      const say = txt => { body.className = 'muted'; body.textContent = txt; };
-      let hit;
-      try{ hit = await TAURI.core.invoke('online_info', {title: t.title || '', artist: t.artist || ''}); }
-      catch(e){ if(m.isConnected) say('Could not reach iTunes. Check the internet connection and try again.'); return; }
-      if(!m.isConnected) return;
-      if(!hit) return say('iTunes does not have this song, or its title and artist are too different. Try Edit details: keep one artist and remove extra words from the title.');
-      const rows = F.filter(([k]) => hit[k]).map(([k, label]) => {
-        const same = (t[k] || '') === hit[k];
-        return '<tr class="' + (same ? 'same' : '') + '"><td><label><input type="checkbox" data-f="' + k + '"' + (same ? ' disabled' : ' checked') + '>' + label + '</label></td>' +
-          '<td dir="auto">' + esc(t[k] || '—') + '</td><td dir="auto" class="' + (same ? '' : 'new') + '">' + (same ? 'same' : esc(hit[k])) + '</td></tr>';
-      });
-      body.className = '';
-      body.innerHTML = '<div class="fi-wrap">' + (hit.cover ? '<img class="fi-cover" alt="" src="' + esc(hit.cover) + '" onerror="this.remove()">' : '') +
-        '<table class="fi-tab"><tr><th></th><th>In the app</th><th>On iTunes</th></tr>' + rows.join('') + '</table></div>' +
-        '<p class="muted small" style="margin:10px 0 0">Only the app\'s library changes. The file itself is not touched.</p>';
-      const sync = () => { apply.disabled = !body.querySelector('input[data-f]:checked'); };
-      if(rows.every(r => r.includes('class="same"'))) say('Everything already matches iTunes.');
-      sync(); body.addEventListener('change', sync);
+    (m, close) => {
+      const q = x => m.querySelector(x), body = q('#fiBody'), apply = q('#fiApply'), url = q('#fiUrl');
+      let hit = null, seq = 0;
+      const say = txt => { body.className = 'muted small'; body.textContent = txt; };
+      const go = async () => {
+        const link = url.value.trim(); if(!link) return;
+        const my = ++seq; hit = null; apply.disabled = true; say('Looking up…');
+        let r;
+        try{ r = await TAURI.core.invoke('link_info', {link}); }
+        catch(e){ if(my === seq && m.isConnected) say(typeof e === 'string' ? e : 'Could not read the link. Check it and try again.'); return; }
+        if(my !== seq || !m.isConnected) return;
+        if(!r) return say('Nothing was found for this link.');
+        hit = r; hit.dcover = hit.cover;   // the picture address is kept on the song as `dcover`
+        const rows = F.filter(([k]) => hit[k]).map(([k, label]) => {
+          const cur = k === 'dcover' ? (t.dcover || '') : (t[k] || '');
+          const same = cur === hit[k];
+          const from = k === 'dcover' ? (cur ? 'set' : '—') : esc(cur || '—'), to = k === 'dcover' ? 'from the link' : esc(hit[k]);
+          return '<tr class="' + (same ? 'same' : '') + '"><td><label><input type="checkbox" data-f="' + k + '"' + (same ? ' disabled' : ' checked') + '>' + label + '</label></td>' +
+            '<td dir="auto">' + from + '</td><td dir="auto" class="' + (same ? '' : 'new') + '">' + (same ? 'same' : to) + '</td></tr>';
+        });
+        const none = rows.every(x => x.startsWith('<tr class="same"'));
+        body.className = '';
+        body.innerHTML = '<div class="fi-wrap">' + (hit.cover ? '<img class="fi-cover" alt="" src="' + esc(hit.cover) + '" onerror="this.remove()">' : '') +
+          '<table class="fi-tab"><tr><th></th><th>In the app</th><th>' + esc(hit.source || 'Link') + '</th></tr>' + rows.join('') + '</table></div>' +
+          '<p class="muted small" style="margin:10px 0 0">' + (none ? 'Everything already matches this link.' : 'Only the app\'s library changes. The file itself is not touched.') + '</p>';
+        apply.disabled = none;
+      };
+      q('#fiGo').onclick = go;
+      url.addEventListener('keydown', e => { if(e.key === 'Enter') go(); });
+      url.addEventListener('paste', () => setTimeout(go, 0));
+      body.addEventListener('change', () => { apply.disabled = !body.querySelector('input[data-f]:checked'); });
+      url.focus();
       apply.onclick = async () => {
-        const picked = [...body.querySelectorAll('input[data-f]:checked')].map(i => i.dataset.f); if(!picked.length) return;
+        const picked = [...body.querySelectorAll('input[data-f]:checked')].map(i => i.dataset.f); if(!picked.length || !hit) return;
         try{
           for(const k of picked) t[k] = hit[k];
           await dbPut('tracks', t);
@@ -3211,46 +3228,13 @@ function discAct(){
   const t = S.tracks.get(S.curId);
   if(!t || audio.paused || audio.ended) return null;
   const rate = audio.playbackRate || 1, cur = audio.currentTime || 0, d = curDur(), now = Date.now() / 1000;
-  return {title: t.title || 'Unknown title', artist: t.artist || '', album: t.album || '', start: Math.round(now - cur / rate), end: d > 0 ? Math.round(now + (d - cur) / rate) : null, cover: null};
+  return {title: t.title || 'Unknown title', artist: t.artist || '', album: t.album || '', start: Math.round(now - cur / rate), end: d > 0 ? Math.round(now + (d - cur) / rate) : null,
+    cover: DISC.covers && t.dcover || null};   // t.dcover: picture address saved by "Fix info from link" (Discord needs an internet address)
 }
-// Covers: Discord only shows pictures that have an internet address, so the official cover is looked up by title and
-// artist (Rust: iTunes Search) and remembered. "" = looked up, none found (tried again after a week).
-var DCOV = (() => { const v = store.get('mp_dcover', {}); return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; })();
-var discPend = {}, discFailT = {};
-const discKey = t => (t.artist || '').trim().toLowerCase() + '|' + (t.title || '').trim().toLowerCase();
-function discCoverCached(t){
-  const c = DCOV[discKey(t)];
-  return c && (c.u || Date.now() - c.t < 7 * 864e5) ? c.u : undefined;   // undefined: not known yet
-}
-// the cover address, waiting at most `ms` for a lookup that is still running (it carries on in the background)
-async function discCover(t, ms){
-  const key = discKey(t), known = discCoverCached(t);
-  if(known !== undefined) return known;
-  if(!(t.artist || '').trim() || Date.now() - (discFailT[key] || 0) < 60000) return '';
-  if(!discPend[key]){
-    discPend[key] = (async () => {
-      let u = null;
-      try{ u = await TAURI.core.invoke('discord_cover', {title: t.title || '', artist: t.artist || ''}); }
-      catch(e){ discFailT[key] = Date.now(); delete discPend[key]; return ''; }      // no internet: not remembered
-      DCOV[key] = {u: u || '', t: Date.now()};
-      const ks = Object.keys(DCOV); if(ks.length > 500) ks.sort((a, b) => DCOV[a].t - DCOV[b].t).slice(0, ks.length - 400).forEach(k => delete DCOV[k]);
-      store.set('mp_dcover', DCOV); delete discPend[key];
-      if(u && S.curId === t.id) discordSync(true);   // the lookup was slower than we waited: show the cover now
-      return u || '';
-    })();
-  }
-  return await Promise.race([discPend[key], new Promise(r => setTimeout(() => r(''), ms))]);
-}
-async function discordSend(){
+function discordSend(){
   if(!IS_APP) return;
   const id = DISC.on && discValid() ? DISC.id : '';
-  let act = id ? discAct() : null;
-  if(act && DISC.covers){
-    const t = S.tracks.get(S.curId), u = await discCover(t, 2500);
-    // playback may have changed while we waited: a newer event sends the right thing
-    if(S.curId !== t.id || audio.paused || !DISC.on) return;
-    act = discAct(); if(act && u) act.cover = u;
-  }
+  const act = id ? discAct() : null;
   const key = id + '|' + (act ? [act.title, act.artist, act.album, act.cover || ''].join('\u0001') : '');
   // the same song and time bar (give or take a second) is already shown
   if(discLast.key === key && (!act || (Math.abs(act.start - discLast.start) <= 1.5 && Math.abs((act.end || 0) - (discLast.end || 0)) <= 1.5))) return;
@@ -3270,7 +3254,7 @@ function openDiscord(){
   openModal('<h3>Discord status</h3>' +
     '<p class="muted small" style="margin:0 0 10px">Shows the song you are playing on your Discord profile, like Spotify: title, artist, album and a time bar. It disappears when you pause.</p>' +
     '<label class="trow"><div class="tl">Show what I\'m listening to<small>Works with the Discord desktop app on this computer</small></div><input type="checkbox" class="tog" id="dcOn" role="switch"></label>' +
-    '<label class="trow"><div class="tl">Look up covers online<small>Finds the song\'s cover on iTunes and shows it. Sends the title and artist to Apple; needs internet</small></div><input type="checkbox" class="tog" id="dcCov" role="switch"></label>' +
+    '<label class="trow"><div class="tl">Show the song\'s cover<small>Only for songs whose info was fixed from a link (song menu, Fix info from link). Discord loads the picture from Apple or Spotify</small></div><input type="checkbox" class="tog" id="dcCov" role="switch"></label>' +
     '<div class="muted small" style="margin:12px 0 4px">Application ID</div>' +
     '<input class="inp" id="dcId" inputmode="numeric" maxlength="25" autocomplete="off" spellcheck="false" placeholder="A long number, for example 123456789012345678" style="direction:ltr">' +
     '<div class="dc-status" id="dcStatus" role="status"></div>' +
