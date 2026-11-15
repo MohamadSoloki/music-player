@@ -2350,7 +2350,7 @@ function openFixInfo(id){
         hit = r;
         const rows = F.filter(([k]) => hit[k]).map(([k, label]) => {
           const cur = k === 'cover' ? (t.dcover || '') : (t[k] || '');   // t.dcover: address of the cover that came from a link
-          const same = cur === hit[k];
+          const same = k !== 'cover' && cur === hit[k];   // the cover can be changed by hand later, so it is always offered
           const from = k === 'cover' ? (t.hasCover ? 'has a cover' : '—') : esc(cur || '—'), to = k === 'cover' ? 'the link\'s cover' : esc(hit[k]);
           return '<tr class="' + (same ? 'same' : '') + '"><td><label><input type="checkbox" data-f="' + k + '"' + (same ? ' disabled' : ' checked') + '>' + label + '</label></td>' +
             '<td dir="auto">' + from + '</td><td dir="auto" class="' + (same ? '' : 'new') + '">' + (same ? 'same' : to) + '</td></tr>';
